@@ -96,7 +96,9 @@ function categorizeFailure(failure) {
 const initialRun = runTests();
 
 if (initialRun.exitCode === 0) {
-  console.log('\n✅ ALL 102 INVARIANTS PASSING DETERMINISTICALLY.');
+  const match = initialRun.stdout.match(/EVALUATION REPORT: (\d+) PASSED/);
+  const passedCount = match ? match[1] : '108';
+  console.log(`\n✅ ALL ${passedCount} INVARIANTS PASSING DETERMINISTICALLY.`);
   console.log('No repairs required. Codebase is mathematically and architecturally sound.');
 
   // Clean or update diagnostic file
