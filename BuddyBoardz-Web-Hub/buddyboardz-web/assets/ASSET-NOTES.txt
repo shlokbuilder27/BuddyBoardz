@@ -1,0 +1,1 @@
+Supplied BuddyBoardz assets: cropped icon mark, cropped wordmark, BB monogram, original pastel wordmark image, and compressed blue texture (WebP). White canvases were cropped and made transparent where appropriate.

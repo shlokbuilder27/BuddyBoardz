@@ -1,0 +1,20 @@
+[package]
+name = "buddyboardz-10"
+version = "1.0.0"
+edition = "2021"
+description = "BuddyBoardz 10 — Native GSEB Class 10 Desktop Companion (Rust + Tauri v2)"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true

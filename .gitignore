@@ -1,0 +1,23 @@
+# Rust & Tauri build outputs
+target/
+**/target/
+src-tauri/target/
+
+# Node dependencies
+node_modules/
+**/node_modules/
+package-lock.json
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and environment
+*.log
+.env
+.env.local
+
+# Temporary scratch files
+scratch/
+**/scratch/
