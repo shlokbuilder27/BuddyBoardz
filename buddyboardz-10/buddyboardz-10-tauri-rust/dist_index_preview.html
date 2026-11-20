@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BuddyBoardz 10 — GSEB Class 10 Desktop Companion</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Agrave+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- 100% Offline Local Typography (Zero CDN / Zero Google Fonts) -->
   <style>
     
     @font-face {
@@ -2116,7 +2114,15 @@
           card.dueAt = Date.now() + nextDays * 24 * 60 * 60 * 1000;
           state.xp += r === 'AGAIN' ? 5 : 20;
           saveState();
-          
+          renderTopChrome();
+          renderRetest();
+          buddyReact(r === 'AGAIN'
+            ? `No stress—we'll re-hit Ch.${card.chapterId} tomorrow so it sticks!`
+            : `Boom! +20 XP. Ch.${card.chapterId} locked for ${nextDays} days before boards.`, r === 'AGAIN' ? 'think' : 'excited');
+        });
+      });
+    }
+
     /* ================= BUDDY VOICE SYNTHESIS & AI AUTOPSY LOGIC ================= */
     let isVoiceMuted = false;
     function speakBuddy(text) {
@@ -2183,16 +2189,23 @@
       let ocrText = '';
       let ocrConfidence = 0;
 
-      // Execute client-side OCR if Tesseract is available
+      // Execute client-side OCR if Tesseract is available (100% offline local assets)
       if (typeof Tesseract !== 'undefined' && canvas) {
         try {
-          const ocrRes = await Tesseract.recognize(canvas, 'eng');
+          const tesseractBasePath = new URL('vendor/tesseract/', window.location.href).href;
+          const ocrRes = await Tesseract.recognize(canvas, 'eng', {
+            workerPath: `${tesseractBasePath}worker.min.js`,
+            corePath: `${tesseractBasePath}tesseract-core-simd-lstm.wasm.js`,
+            langPath: tesseractBasePath.replace(/\/$/, ''),
+            workerBlobURL: false,
+            gzip: true
+          });
           if (ocrRes && ocrRes.data) {
             ocrText = (ocrRes.data.text || '').trim();
             ocrConfidence = Math.round(ocrRes.data.confidence || 0);
           }
         } catch (ocrErr) {
-          console.warn('Tesseract recognition notice (using syllabus fallback):', ocrErr);
+          console.warn('Tesseract offline recognition notice (using syllabus fallback):', ocrErr);
         }
       }
 
@@ -2397,15 +2410,6 @@
           aiAutoLogBtn.textContent = '✓ 1-Tap Auto-Log & Queue to Tonight (+15 XP)';
           aiAutoLogBtn.style.background = 'var(--black)';
         }, 1600);
-      });
-    }
-
-    renderTopChrome();
-          renderRetest();
-          buddyReact(r === 'AGAIN'
-            ? `No stress—we'll re-hit Ch.${card.chapterId} tomorrow so it sticks!`
-            : `Boom! +20 XP. Ch.${card.chapterId} locked for ${nextDays} days before boards.`, r === 'AGAIN' ? 'think' : 'excited');
-        });
       });
     }
 

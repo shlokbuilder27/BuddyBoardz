@@ -4,9 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BuddyBoardz 10 — GSEB Class 10 Desktop Companion</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Agrave+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="./Assets/Icon.png" />
+  <!-- 100% Offline Local Typography (Zero CDN / Zero Google Fonts) -->
   <style>
     
     @font-face {
@@ -54,7 +53,7 @@
       inset: 0;
       background: rgba(17, 17, 17, 0.76);
       backdrop-filter: blur(8px);
-      z-index: 1250;
+      z-index: 10050;
       display: none;
       align-items: center;
       justify-content: center;
@@ -1161,6 +1160,7 @@
 
         <div id="ai-snap-zone" style="border:2px dashed #111;background:var(--white);padding:20px;text-align:center;cursor:pointer;border-radius:6px;transition:all 0.2s;">
           <input type="file" id="ai-photo-input" accept="image/*" capture="environment" style="display:none;" />
+          <canvas id="ai-scan-canvas" style="display:none;"></canvas>
           <div style="font-size:28px;margin-bottom:4px;">📷</div>
           <div style="font-weight:700;font-size:0.98rem;color:var(--black);">Snap Red-Marked Question with Phone Camera</div>
           <div style="font-size:0.82rem;color:var(--ink-soft);margin-top:3px;">Buddy analyzes teacher's red marks &amp; diagnoses the exact execution flaw</div>
@@ -1181,12 +1181,25 @@
         <!-- Diagnosed Result State -->
         <div id="ai-diag-result" style="display:none;margin-top:14px;padding:18px;background:var(--white);border:2px solid #111;box-shadow:4px 4px 0 #111;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-weight:700;color:#111;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">✓ Flaw Discovered (Zero Typing)</span>
-            <span id="ai-diag-loss" style="background:#FFE6E6;border:1px solid #111;padding:3px 10px;font-weight:700;font-size:0.8rem;">-2 Marks in Sec B</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-weight:700;color:#111;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">✓ Flaw Discovered (Zero Typing)</span>
+              <span id="ai-diag-tag" class="onboard-step-pill tag-concept">CONCEPT</span>
+            </div>
+            <span id="ai-diag-loss" style="background:#FFE6E6;border:1px solid #111;padding:3px 10px;font-weight:700;font-size:0.8rem;"><span id="ai-diag-sec">-2 Marks in Sec B</span></span>
           </div>
-          <h3 id="ai-diag-title" style="font-size:1.15rem;margin:10px 0 6px;">Ch 3: Linear Equations in Two Variables</h3>
+          <h3 id="ai-diag-title" style="font-size:1.15rem;margin:10px 0 6px;"><span id="ai-diag-chapter">Ch 3: Linear Equations in Two Variables</span></h3>
+          
+          <!-- Local OCR Text Box -->
+          <div id="ai-ocr-text-container" style="display:none;background:#F8F8F6;border:1px dashed #111;padding:8px 12px;margin:8px 0;font-size:0.82rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-weight:700;color:var(--ink-soft);font-size:0.75rem;">EXTRACTED PAPER TEXT</span>
+              <span id="ai-ocr-confidence-pill" style="font-size:0.72rem;background:#E3EFFB;padding:2px 6px;font-weight:600;">96% OCR</span>
+            </div>
+            <input type="text" id="ai-recognized-text" style="width:100%;padding:4px 6px;border:1px solid #CCC;background:#FFF;font-family:monospace;font-size:0.8rem;" readonly />
+          </div>
+
           <div id="ai-diag-flaw" style="background:var(--beige);border-left:3.5px solid #111;padding:11px 14px;font-size:0.88rem;margin:10px 0;line-height:1.45;">
-            <strong>Line 3 Execution Flaw:</strong> You expanded <code>-(2x - 7)</code> as <code>-2x - 7</code>. The minus sign did not distribute across the parentheses!
+            <div id="ai-diag-flaw-text"><strong>Line 3 Execution Flaw:</strong> You expanded <code>-(2x - 7)</code> as <code>-2x - 7</code>. The minus sign did not distribute across the parentheses!</div>
           </div>
           <button class="btn-primary" id="ai-auto-log-btn" type="button" style="width:100%;margin-top:6px;min-height:48px;font-size:0.94rem;">✓ 1-Tap Auto-Log &amp; Queue to Tonight (+15 XP)</button>
         </div>
@@ -1624,6 +1637,7 @@
     };
 
     let state = loadState();
+    window.state = state;
     let logDraft = { section: 'B', marksLost: 2, errorTag: 'CONCEPT' };
 
     function getStoredProfiles() {
@@ -1699,7 +1713,11 @@
     }
 
     function saveState() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        registerOrUpdateProfile(state);
+      } catch {}
+      window.state = state;
     }
 
     
@@ -2116,7 +2134,15 @@
           card.dueAt = Date.now() + nextDays * 24 * 60 * 60 * 1000;
           state.xp += r === 'AGAIN' ? 5 : 20;
           saveState();
-          
+          renderTopChrome();
+          renderRetest();
+          buddyReact(r === 'AGAIN'
+            ? `No stress—we'll re-hit Ch.${card.chapterId} tomorrow so it sticks!`
+            : `Boom! +20 XP. Ch.${card.chapterId} locked for ${nextDays} days before boards.`, r === 'AGAIN' ? 'think' : 'excited');
+        });
+      });
+    }
+
     /* ================= BUDDY VOICE SYNTHESIS & AI AUTOPSY LOGIC ================= */
     let isVoiceMuted = false;
     function speakBuddy(text) {
@@ -2148,6 +2174,7 @@
     const aiAutoLogBtn = document.getElementById('ai-auto-log-btn');
 
     let currentDiag = null;
+    window.getCurrentDiag = () => currentDiag;
 
     if (aiSnapZone && aiPhotoInput) {
       aiSnapZone.addEventListener('click', () => aiPhotoInput.click());
@@ -2183,16 +2210,23 @@
       let ocrText = '';
       let ocrConfidence = 0;
 
-      // Execute client-side OCR if Tesseract is available
+      // Execute client-side OCR if Tesseract is available (100% offline local assets)
       if (typeof Tesseract !== 'undefined' && canvas) {
         try {
-          const ocrRes = await Tesseract.recognize(canvas, 'eng');
+          const tesseractBasePath = new URL('vendor/tesseract/', window.location.href).href;
+          const ocrRes = await Tesseract.recognize(canvas, 'eng', {
+            workerPath: `${tesseractBasePath}worker.min.js`,
+            corePath: `${tesseractBasePath}tesseract-core-simd-lstm.wasm.js`,
+            langPath: tesseractBasePath.replace(/\/$/, ''),
+            workerBlobURL: false,
+            gzip: true
+          });
           if (ocrRes && ocrRes.data) {
             ocrText = (ocrRes.data.text || '').trim();
             ocrConfidence = Math.round(ocrRes.data.confidence || 0);
           }
         } catch (ocrErr) {
-          console.warn('Tesseract recognition notice (using syllabus fallback):', ocrErr);
+          console.warn('Tesseract offline recognition notice (using syllabus fallback):', ocrErr);
         }
       }
 
@@ -2202,11 +2236,14 @@
       const activeSub = state.activeSubject || 'maths-std-12';
       const subjRules = SYLLABUS_KEYWORDS[activeSub] || SYLLABUS_KEYWORDS['maths-std-12'];
 
-      // Match extracted OCR text against syllabus keywords
+      // Match extracted OCR text against syllabus keywords with boundary-aware matching
       let chosen = null;
       if (ocrText) {
         const lowerOcr = ocrText.toLowerCase();
-        chosen = subjRules.find(rule => rule.keywords.some(k => lowerOcr.includes(k)));
+        chosen = subjRules.find(rule => rule.keywords.some(k => {
+          const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i').test(lowerOcr);
+        }));
       }
 
       const ocrBox = document.getElementById('ai-ocr-text-container');
@@ -2397,15 +2434,6 @@
           aiAutoLogBtn.textContent = '✓ 1-Tap Auto-Log & Queue to Tonight (+15 XP)';
           aiAutoLogBtn.style.background = 'var(--black)';
         }, 1600);
-      });
-    }
-
-    renderTopChrome();
-          renderRetest();
-          buddyReact(r === 'AGAIN'
-            ? `No stress—we'll re-hit Ch.${card.chapterId} tomorrow so it sticks!`
-            : `Boom! +20 XP. Ch.${card.chapterId} locked for ${nextDays} days before boards.`, r === 'AGAIN' ? 'think' : 'excited');
-        });
       });
     }
 
@@ -2864,6 +2892,7 @@
 
     function startOnboardingModal() {
       currentStep = 0;
+      for (const k in onboardAnswers) delete onboardAnswers[k];
       if (state.mathsTrack) onboardAnswers.maths_track = state.mathsTrack;
       if (state.studentName) onboardAnswers.name = state.studentName;
       document.getElementById('onboarding-modal').classList.add('active');
@@ -3029,10 +3058,19 @@
         showToast('Please enter your name');
         return;
       }
-      state.studentName = name;
-      state.mathsTrack = track;
-      state.activeSubject = track;
-      state.isLoggedIn = true;
+      // Initialize pristine desk state for new student
+      state = {
+        ...structuredClone(DEFAULT_STATE),
+        studentName: name,
+        mathsTrack: track,
+        activeSubject: track,
+        isLoggedIn: true,
+        hasCompletedOnboarding: false
+      };
+      for (const k in onboardAnswers) delete onboardAnswers[k];
+      onboardAnswers.name = name;
+      onboardAnswers.maths_track = track;
+
       saveState();
       closeAuthModal();
       startOnboardingModal();
@@ -3078,6 +3116,15 @@
     renderTopChrome();
     renderSimulator();
     setTimeout(dismissSplash, 2300);
+
+    // Global Test & Harness Bridge
+    window.state = state;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.switchDeskTo = switchDeskTo;
+    window.switchView = switchView;
+    window.triggerDynamicAutopsyScan = triggerDynamicAutopsyScan;
+    window.startOnboardingModal = startOnboardingModal;
   </script>
 </body>
 </html>

@@ -4,9 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BuddyBoardz 10 — GSEB Class 10 Desktop Companion</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Agrave+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="./Assets/Icon.png" />
+  <!-- 100% Offline Local Typography (Zero CDN / Zero Google Fonts) -->
   <style>
     
     @font-face {
@@ -54,7 +53,7 @@
       inset: 0;
       background: rgba(17, 17, 17, 0.76);
       backdrop-filter: blur(8px);
-      z-index: 1250;
+      z-index: 10050;
       display: none;
       align-items: center;
       justify-content: center;
@@ -1161,6 +1160,7 @@
 
         <div id="ai-snap-zone" style="border:2px dashed #111;background:var(--white);padding:20px;text-align:center;cursor:pointer;border-radius:6px;transition:all 0.2s;">
           <input type="file" id="ai-photo-input" accept="image/*" capture="environment" style="display:none;" />
+          <canvas id="ai-scan-canvas" style="display:none;"></canvas>
           <div style="font-size:28px;margin-bottom:4px;">📷</div>
           <div style="font-weight:700;font-size:0.98rem;color:var(--black);">Snap Red-Marked Question with Phone Camera</div>
           <div style="font-size:0.82rem;color:var(--ink-soft);margin-top:3px;">Buddy analyzes teacher's red marks &amp; diagnoses the exact execution flaw</div>
@@ -1181,12 +1181,25 @@
         <!-- Diagnosed Result State -->
         <div id="ai-diag-result" style="display:none;margin-top:14px;padding:18px;background:var(--white);border:2px solid #111;box-shadow:4px 4px 0 #111;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-weight:700;color:#111;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">✓ Flaw Discovered (Zero Typing)</span>
-            <span id="ai-diag-loss" style="background:#FFE6E6;border:1px solid #111;padding:3px 10px;font-weight:700;font-size:0.8rem;">-2 Marks in Sec B</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-weight:700;color:#111;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">✓ Flaw Discovered (Zero Typing)</span>
+              <span id="ai-diag-tag" class="onboard-step-pill tag-concept">CONCEPT</span>
+            </div>
+            <span id="ai-diag-loss" style="background:#FFE6E6;border:1px solid #111;padding:3px 10px;font-weight:700;font-size:0.8rem;"><span id="ai-diag-sec">-2 Marks in Sec B</span></span>
           </div>
-          <h3 id="ai-diag-title" style="font-size:1.15rem;margin:10px 0 6px;">Ch 3: Linear Equations in Two Variables</h3>
+          <h3 id="ai-diag-title" style="font-size:1.15rem;margin:10px 0 6px;"><span id="ai-diag-chapter">Ch 3: Linear Equations in Two Variables</span></h3>
+          
+          <!-- Local OCR Text Box -->
+          <div id="ai-ocr-text-container" style="display:none;background:#F8F8F6;border:1px dashed #111;padding:8px 12px;margin:8px 0;font-size:0.82rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-weight:700;color:var(--ink-soft);font-size:0.75rem;">EXTRACTED PAPER TEXT</span>
+              <span id="ai-ocr-confidence-pill" style="font-size:0.72rem;background:#E3EFFB;padding:2px 6px;font-weight:600;">96% OCR</span>
+            </div>
+            <input type="text" id="ai-recognized-text" style="width:100%;padding:4px 6px;border:1px solid #CCC;background:#FFF;font-family:monospace;font-size:0.8rem;" readonly />
+          </div>
+
           <div id="ai-diag-flaw" style="background:var(--beige);border-left:3.5px solid #111;padding:11px 14px;font-size:0.88rem;margin:10px 0;line-height:1.45;">
-            <strong>Line 3 Execution Flaw:</strong> You expanded <code>-(2x - 7)</code> as <code>-2x - 7</code>. The minus sign did not distribute across the parentheses!
+            <div id="ai-diag-flaw-text"><strong>Line 3 Execution Flaw:</strong> You expanded <code>-(2x - 7)</code> as <code>-2x - 7</code>. The minus sign did not distribute across the parentheses!</div>
           </div>
           <button class="btn-primary" id="ai-auto-log-btn" type="button" style="width:100%;margin-top:6px;min-height:48px;font-size:0.94rem;">✓ 1-Tap Auto-Log &amp; Queue to Tonight (+15 XP)</button>
         </div>
@@ -1624,6 +1637,7 @@
     };
 
     let state = loadState();
+    window.state = state;
     let logDraft = { section: 'B', marksLost: 2, errorTag: 'CONCEPT' };
 
     function getStoredProfiles() {
@@ -1699,7 +1713,11 @@
     }
 
     function saveState() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        registerOrUpdateProfile(state);
+      } catch {}
+      window.state = state;
     }
 
     
@@ -1747,6 +1765,394 @@
       saveState();
       registerOrUpdateProfile(state);
       return entry;
+    }
+
+    const INTELLIGENCE_KEY = 'buddyboardz_intelligence_v2';
+    const INTELLIGENCE_VERSION = 2;
+    const INTELLIGENCE_FIELDS = ['attempts', 'errorPatterns', 'activities', 'retests', 'chapterMastery'];
+
+    function createEmptyIntelligence() {
+      return {
+        version: INTELLIGENCE_VERSION,
+        attempts: [],
+        errorPatterns: [],
+        activities: [],
+        retests: [],
+        chapterMastery: []
+      };
+    }
+
+    function validateIntelligenceStore(raw) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        throw new Error('Intelligence store must be an object');
+      }
+      if (raw.version !== INTELLIGENCE_VERSION) {
+        throw new Error('Unsupported intelligence schema version: ' + String(raw.version));
+      }
+      INTELLIGENCE_FIELDS.forEach(field => {
+        if (!Array.isArray(raw[field])) {
+          throw new Error('Invalid intelligence field: ' + field);
+        }
+      });
+      const clean = createEmptyIntelligence();
+      INTELLIGENCE_FIELDS.forEach(field => {
+        clean[field] = raw[field];
+      });
+      return clean;
+    }
+
+    function saveIntelligence(store) {
+      const valid = validateIntelligenceStore(store);
+      try {
+        localStorage.setItem(INTELLIGENCE_KEY, JSON.stringify(valid));
+      } catch (err) {
+        throw new Error('Could not save intelligence store: ' + err.message);
+      }
+    }
+
+    function loadIntelligence() {
+      const raw = localStorage.getItem(INTELLIGENCE_KEY);
+      if (raw === null) return createEmptyIntelligence();
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        throw new Error('Corrupted intelligence store: ' + err.message);
+      }
+      return validateIntelligenceStore(parsed);
+    }
+
+    function stablePatternId(subjectId, chapterId, errorTag) {
+      const source = `${subjectId}|c${chapterId}|${errorTag}`;
+      let hash = 2166136261;
+      for (let i = 0; i < source.length; i += 1) {
+        hash ^= source.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return 'ep-' + (hash >>> 0).toString(16).padStart(8, '0');
+    }
+
+    function normalizeAnchor(text) {
+      return String(text || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function legacyMistakeCreatedAt(mistake) {
+      const parts = String(mistake.id || '').split('-');
+      const stamp = Number(parts[1]);
+      return Number.isFinite(stamp) && stamp > 0 ? stamp : Date.now();
+    }
+
+    function toLegacyMistake(mistake) {
+      return {
+        subjectId: mistake.subjectId,
+        chapterId: Number(mistake.chapterId) || 1,
+        section: mistake.section || 'A',
+        marksLost: Number(mistake.marksLost) || 1,
+        errorTag: mistake.errorTag || 'SILLY',
+        microAnchor: String(mistake.microAnchor || '')
+      };
+    }
+
+    function buildLegacyAttempts(mistakes, examDateISO, studentId) {
+      const bySubject = new Map();
+      (mistakes || []).forEach(mistake => {
+        const legacy = toLegacyMistake(mistake);
+        if (!bySubject.has(legacy.subjectId)) bySubject.set(legacy.subjectId, []);
+        bySubject.get(legacy.subjectId).push({ legacy, createdAt: legacyMistakeCreatedAt(mistake) });
+      });
+      const attempts = [];
+      bySubject.forEach((entries, subjectId) => {
+        const sorted = entries.slice().sort((a, b) => a.createdAt - b.createdAt);
+        attempts.push({
+          attemptId: `at-legacy-${subjectId}-${sorted[0].createdAt}`,
+          studentId: studentId || '',
+          subjectId: subjectId,
+          examDateISO: examDateISO || '2027-02-25',
+          scoreObtained: null,
+          createdAt: sorted[0].createdAt,
+          mistakes: sorted.map(entry => entry.legacy)
+        });
+      });
+      return attempts;
+    }
+
+    function buildErrorPatterns(attempts) {
+      const grouped = new Map();
+      (attempts || []).forEach(attempt => {
+        (attempt.mistakes || []).forEach(mistake => {
+          const conceptId = `${mistake.subjectId}-c${mistake.chapterId}`;
+          const key = `${mistake.subjectId}|${conceptId}|${mistake.errorTag}`;
+          if (!grouped.has(key)) {
+            grouped.set(key, {
+              patternId: stablePatternId(mistake.subjectId, mistake.chapterId, mistake.errorTag),
+              subjectId: mistake.subjectId,
+              conceptId: conceptId,
+              chapterId: mistake.chapterId,
+              errorTag: mistake.errorTag,
+              description: normalizeAnchor(mistake.microAnchor) || `${mistake.errorTag} error in chapter ${mistake.chapterId}`,
+              frequency: 0,
+              firstSeen: attempt.createdAt,
+              lastSeen: attempt.createdAt,
+              trend: 'STABLE',
+              latestAttemptId: attempt.attemptId || ''
+            });
+          }
+          const pattern = grouped.get(key);
+          pattern.frequency += 1;
+          if (attempt.createdAt < pattern.firstSeen) pattern.firstSeen = attempt.createdAt;
+          if (attempt.createdAt > pattern.lastSeen) pattern.lastSeen = attempt.createdAt;
+          pattern.latestAttemptId = attempt.attemptId || pattern.latestAttemptId;
+        });
+      });
+      return Array.from(grouped.values());
+    }
+
+    function migrateIntelligence() {
+      const raw = localStorage.getItem(INTELLIGENCE_KEY);
+      if (raw !== null) return loadIntelligence();
+      const attempts = buildLegacyAttempts(state.mistakes || [], state.examDateISO, state.studentName || '');
+      const store = createEmptyIntelligence();
+      store.attempts = attempts;
+      store.errorPatterns = buildErrorPatterns(attempts);
+      saveIntelligence(store);
+      return store;
+    }
+
+    const MASTERY_PRIOR = 0.3;
+    const MASTERY_WEIGHTS = { ASSESSMENT_MISS: -0.1, RETRY_PASS: 0.25, RETRY_FAIL: -0.25, PRACTICE_DONE: 0 };
+    const WEAKNESS_FREQUENCY_THRESHOLD = 2;
+
+    function cloneJson(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function cloneIntelligence(store) {
+      const valid = validateIntelligenceStore(store);
+      const copy = createEmptyIntelligence();
+      INTELLIGENCE_FIELDS.forEach(field => {
+        copy[field] = valid[field].map(item => cloneJson(item));
+      });
+      return copy;
+    }
+
+    function roundMastery(value) {
+      return Math.round(Math.min(1, Math.max(0, value)) * 1000) / 1000;
+    }
+
+    function getChapterMastery(store, subjectId, chapterId) {
+      const found = store.chapterMastery.find(m => m.subjectId === subjectId && m.chapterId === chapterId);
+      return found || { subjectId: subjectId, chapterId: chapterId, estimate: MASTERY_PRIOR, evidence: [], lastVerified: 0 };
+    }
+
+    function putChapterMastery(store, mastery) {
+      const index = store.chapterMastery.findIndex(m => m.subjectId === mastery.subjectId && m.chapterId === mastery.chapterId);
+      if (index >= 0) store.chapterMastery[index] = mastery;
+      else store.chapterMastery.push(mastery);
+      return mastery;
+    }
+
+    function addMasteryEvidence(store, subjectId, chapterId, evidence) {
+      const mastery = cloneJson(getChapterMastery(store, subjectId, chapterId));
+      mastery.evidence.push(evidence);
+      const total = mastery.evidence.reduce((sum, item) => sum + (Number(item.weight) || 0), MASTERY_PRIOR);
+      mastery.estimate = roundMastery(total);
+      if (evidence.kind === 'RETRY_PASS' || evidence.kind === 'RETRY_FAIL') {
+        mastery.lastVerified = Number(evidence.createdAt) || Date.now();
+      }
+      return putChapterMastery(store, mastery);
+    }
+
+    function applyAssessmentToStore(store, attempt) {
+      const next = cloneIntelligence(store);
+      const clonedAttempt = cloneJson(attempt);
+      if (next.attempts.some(a => a.attemptId === clonedAttempt.attemptId)) {
+        return { store: next, derivedPatterns: [] };
+      }
+      next.attempts.push(clonedAttempt);
+      const derived = buildErrorPatterns([clonedAttempt]);
+      derived.forEach(pattern => {
+        const existing = next.errorPatterns.find(p => p.patternId === pattern.patternId);
+        if (existing) {
+          existing.frequency += pattern.frequency;
+          existing.firstSeen = Math.min(existing.firstSeen, pattern.firstSeen);
+          existing.lastSeen = Math.max(existing.lastSeen, pattern.lastSeen);
+          existing.latestAttemptId = pattern.latestAttemptId;
+        } else {
+          next.errorPatterns.push(pattern);
+        }
+      });
+      (clonedAttempt.mistakes || []).forEach(mistake => {
+        addMasteryEvidence(next, mistake.subjectId, mistake.chapterId, {
+          attemptId: clonedAttempt.attemptId,
+          kind: 'ASSESSMENT_MISS',
+          weight: MASTERY_WEIGHTS.ASSESSMENT_MISS,
+          createdAt: clonedAttempt.createdAt
+        });
+      });
+      return { store: next, derivedPatterns: derived };
+    }
+
+    function recordAssessment(attempt) {
+      const result = applyAssessmentToStore(loadIntelligence(), attempt);
+      saveIntelligence(result.store);
+      return result;
+    }
+
+    function computeWeaknesses(store) {
+      return store.errorPatterns
+        .filter(pattern => pattern.frequency >= WEAKNESS_FREQUENCY_THRESHOLD)
+        .map(pattern => {
+          const mastery = getChapterMastery(store, pattern.subjectId, pattern.chapterId);
+          const blueprint = BLUEPRINTS[pattern.subjectId];
+          const chapter = blueprint ? blueprint.chapters.find(c => c.id === pattern.chapterId) : null;
+          const baseMarks = chapter ? chapter.base : 0;
+          return {
+            pattern: pattern,
+            chapterId: pattern.chapterId,
+            estimate: mastery.estimate,
+            marksAtRisk: Math.round(baseMarks * (1 - mastery.estimate) * 10) / 10,
+            severity: mastery.estimate < 0.3 ? 'CRITICAL' : (mastery.estimate < 0.6 ? 'HIGH' : 'WATCH')
+          };
+        })
+        .sort((a, b) => b.marksAtRisk - a.marksAtRisk);
+    }
+
+    function detectWeaknesses() {
+      return computeWeaknesses(loadIntelligence());
+    }
+
+    function activityKindForTag(errorTag) {
+      if (errorTag === 'CONCEPT') return 'CONCEPT_REWORK';
+      if (errorTag === 'FORMULA') return 'FORMULA_REVIEW';
+      if (errorTag === 'TIME') return 'TIME_MANAGEMENT';
+      return 'DRILL_SET';
+    }
+
+    function createCorrectiveActivity(weakness, studentId) {
+      const pattern = weakness.pattern;
+      return {
+        activityId: `ac-${pattern.patternId}-${pattern.lastSeen}`,
+        studentId: studentId || '',
+        subjectId: pattern.subjectId,
+        chapterId: pattern.chapterId,
+        conceptIds: [pattern.conceptId],
+        kind: activityKindForTag(pattern.errorTag),
+        status: 'PENDING',
+        expectedOutcome: `Attempt one fresh ${pattern.errorTag.toLowerCase()} problem in chapter ${pattern.chapterId} without repeating: ${pattern.description}`,
+        createdAt: pattern.lastSeen,
+        linkedPatternIds: [pattern.patternId]
+      };
+    }
+
+    function issueCorrectiveActivity(weakness) {
+      const store = loadIntelligence();
+      const open = store.activities.find(a => a.linkedPatternIds.indexOf(weakness.pattern.patternId) !== -1 && a.status !== 'VERIFIED');
+      if (open) return open;
+      const activity = createCorrectiveActivity(weakness, state.studentName || '');
+      store.activities.push(activity);
+      saveIntelligence(store);
+      return activity;
+    }
+
+    function scheduleRetest(activity, examDateISO, nowISO, lastAttemptId) {
+      const exam = new Date(String(examDateISO || state.examDateISO || '2027-02-25') + 'T00:00:00');
+      const now = nowISO ? new Date(nowISO) : new Date();
+      const daysUntilExam = Math.max(1, Math.ceil((exam.getTime() - now.getTime()) / 86400000));
+      const maxInterval = Math.max(1, daysUntilExam - 2);
+      const intervalDays = Math.min(7, maxInterval);
+      const due = new Date(now.getTime() + intervalDays * 86400000);
+      return {
+        retestId: `rt-${activity.activityId}`,
+        activityId: activity.activityId,
+        studentId: activity.studentId || '',
+        subjectId: activity.subjectId,
+        chapterId: activity.chapterId,
+        conceptIds: (activity.conceptIds || []).slice(),
+        scheduledFor: due.toISOString().split('T')[0],
+        result: 'PENDING',
+        marksLostAfter: null,
+        lastAttemptId: lastAttemptId || '',
+        createdAt: now.getTime(),
+        fsrsNextDueIso: ''
+      };
+    }
+
+    function issueRetest(activity) {
+      const store = loadIntelligence();
+      const pattern = store.errorPatterns.find(p => activity.linkedPatternIds.indexOf(p.patternId) !== -1);
+      const retest = scheduleRetest(activity, state.examDateISO, null, pattern ? pattern.latestAttemptId : '');
+      store.retests.push(retest);
+      saveIntelligence(store);
+      return retest;
+    }
+
+    function recordCorrectivePractice(activityId) {
+      const store = loadIntelligence();
+      const activity = store.activities.find(a => a.activityId === activityId);
+      if (!activity) throw new Error('Unknown activity id: ' + activityId);
+      activity.status = 'PRACTICE_DONE';
+      addMasteryEvidence(store, activity.subjectId, activity.chapterId, {
+        attemptId: activity.activityId,
+        kind: 'PRACTICE_DONE',
+        weight: MASTERY_WEIGHTS.PRACTICE_DONE,
+        createdAt: Date.now()
+      });
+      saveIntelligence(store);
+      return activity;
+    }
+
+    function reopenWeakness(store, retest, examDateISO, nowISO) {
+      const next = cloneIntelligence(store);
+      const activity = next.activities.find(a => a.activityId === retest.activityId);
+      if (activity) activity.status = 'REOPENED';
+      addMasteryEvidence(next, retest.subjectId, retest.chapterId, {
+        attemptId: retest.retestId,
+        kind: 'RETRY_FAIL',
+        weight: MASTERY_WEIGHTS.RETRY_FAIL,
+        createdAt: retest.createdAt
+      });
+      if (activity) {
+        const retries = next.retests.filter(r => r.activityId === activity.activityId && r.result === 'FAIL' && r.retestId !== retest.retestId).length;
+        const replacement = scheduleRetest(activity, examDateISO, nowISO, retest.lastAttemptId);
+        replacement.retestId = `${retest.retestId}-retry-${retries + 1}`;
+        next.retests.push(replacement);
+      }
+      return next;
+    }
+
+    function applyRetestResultToStore(store, retestId, result, marksLostAfter, examDateISO, nowISO) {
+      const next = cloneIntelligence(store);
+      const retest = next.retests.find(r => r.retestId === retestId);
+      if (!retest) throw new Error('Unknown retest id: ' + retestId);
+      if (result !== 'PASS' && result !== 'FAIL') throw new Error('Retest result must be PASS or FAIL');
+      retest.result = result;
+      retest.marksLostAfter = marksLostAfter === undefined || marksLostAfter === null ? null : Number(marksLostAfter);
+      const fsrs = computeFsrsNextSync(1.2, result === 'PASS' ? 'GOOD' : 'AGAIN', examDateISO || state.examDateISO);
+      retest.fsrsNextDueIso = fsrs.dueIso;
+      if (result === 'FAIL') return reopenWeakness(next, retest, examDateISO, nowISO);
+      const activity = next.activities.find(a => a.activityId === retest.activityId);
+      if (activity) activity.status = 'VERIFIED';
+      addMasteryEvidence(next, retest.subjectId, retest.chapterId, {
+        attemptId: retest.retestId,
+        kind: 'RETRY_PASS',
+        weight: MASTERY_WEIGHTS.RETRY_PASS,
+        createdAt: retest.createdAt
+      });
+      return next;
+    }
+
+    function recordRetestResult(retestId, result, marksLostAfter) {
+      const next = applyRetestResultToStore(loadIntelligence(), retestId, result, marksLostAfter, state.examDateISO, null);
+      saveIntelligence(next);
+      return next;
+    }
+
+    function masteryFor(subjectId, chapterId) {
+      return getChapterMastery(loadIntelligence(), subjectId, chapterId);
     }
 
     /* ================= BUDDY MASCOT ENGINE ================= */
@@ -2116,7 +2522,15 @@
           card.dueAt = Date.now() + nextDays * 24 * 60 * 60 * 1000;
           state.xp += r === 'AGAIN' ? 5 : 20;
           saveState();
-          
+          renderTopChrome();
+          renderRetest();
+          buddyReact(r === 'AGAIN'
+            ? `No stress—we'll re-hit Ch.${card.chapterId} tomorrow so it sticks!`
+            : `Boom! +20 XP. Ch.${card.chapterId} locked for ${nextDays} days before boards.`, r === 'AGAIN' ? 'think' : 'excited');
+        });
+      });
+    }
+
     /* ================= BUDDY VOICE SYNTHESIS & AI AUTOPSY LOGIC ================= */
     let isVoiceMuted = false;
     function speakBuddy(text) {
@@ -2148,6 +2562,7 @@
     const aiAutoLogBtn = document.getElementById('ai-auto-log-btn');
 
     let currentDiag = null;
+    window.getCurrentDiag = () => currentDiag;
 
     if (aiSnapZone && aiPhotoInput) {
       aiSnapZone.addEventListener('click', () => aiPhotoInput.click());
@@ -2183,16 +2598,23 @@
       let ocrText = '';
       let ocrConfidence = 0;
 
-      // Execute client-side OCR if Tesseract is available
+      // Execute client-side OCR if Tesseract is available (100% offline local assets)
       if (typeof Tesseract !== 'undefined' && canvas) {
         try {
-          const ocrRes = await Tesseract.recognize(canvas, 'eng');
+          const tesseractBasePath = new URL('vendor/tesseract/', window.location.href).href;
+          const ocrRes = await Tesseract.recognize(canvas, 'eng', {
+            workerPath: `${tesseractBasePath}worker.min.js`,
+            corePath: `${tesseractBasePath}tesseract-core-simd-lstm.wasm.js`,
+            langPath: tesseractBasePath.replace(/\/$/, ''),
+            workerBlobURL: false,
+            gzip: true
+          });
           if (ocrRes && ocrRes.data) {
             ocrText = (ocrRes.data.text || '').trim();
             ocrConfidence = Math.round(ocrRes.data.confidence || 0);
           }
         } catch (ocrErr) {
-          console.warn('Tesseract recognition notice (using syllabus fallback):', ocrErr);
+          console.warn('Tesseract offline recognition notice (using syllabus fallback):', ocrErr);
         }
       }
 
@@ -2202,11 +2624,14 @@
       const activeSub = state.activeSubject || 'maths-std-12';
       const subjRules = SYLLABUS_KEYWORDS[activeSub] || SYLLABUS_KEYWORDS['maths-std-12'];
 
-      // Match extracted OCR text against syllabus keywords
+      // Match extracted OCR text against syllabus keywords with boundary-aware matching
       let chosen = null;
       if (ocrText) {
         const lowerOcr = ocrText.toLowerCase();
-        chosen = subjRules.find(rule => rule.keywords.some(k => lowerOcr.includes(k)));
+        chosen = subjRules.find(rule => rule.keywords.some(k => {
+          const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i').test(lowerOcr);
+        }));
       }
 
       const ocrBox = document.getElementById('ai-ocr-text-container');
@@ -2397,15 +2822,6 @@
           aiAutoLogBtn.textContent = '✓ 1-Tap Auto-Log & Queue to Tonight (+15 XP)';
           aiAutoLogBtn.style.background = 'var(--black)';
         }, 1600);
-      });
-    }
-
-    renderTopChrome();
-          renderRetest();
-          buddyReact(r === 'AGAIN'
-            ? `No stress—we'll re-hit Ch.${card.chapterId} tomorrow so it sticks!`
-            : `Boom! +20 XP. Ch.${card.chapterId} locked for ${nextDays} days before boards.`, r === 'AGAIN' ? 'think' : 'excited');
-        });
       });
     }
 
@@ -2864,6 +3280,7 @@
 
     function startOnboardingModal() {
       currentStep = 0;
+      for (const k in onboardAnswers) delete onboardAnswers[k];
       if (state.mathsTrack) onboardAnswers.maths_track = state.mathsTrack;
       if (state.studentName) onboardAnswers.name = state.studentName;
       document.getElementById('onboarding-modal').classList.add('active');
@@ -3029,10 +3446,19 @@
         showToast('Please enter your name');
         return;
       }
-      state.studentName = name;
-      state.mathsTrack = track;
-      state.activeSubject = track;
-      state.isLoggedIn = true;
+      // Initialize pristine desk state for new student
+      state = {
+        ...structuredClone(DEFAULT_STATE),
+        studentName: name,
+        mathsTrack: track,
+        activeSubject: track,
+        isLoggedIn: true,
+        hasCompletedOnboarding: false
+      };
+      for (const k in onboardAnswers) delete onboardAnswers[k];
+      onboardAnswers.name = name;
+      onboardAnswers.maths_track = track;
+
       saveState();
       closeAuthModal();
       startOnboardingModal();
@@ -3078,6 +3504,15 @@
     renderTopChrome();
     renderSimulator();
     setTimeout(dismissSplash, 2300);
+
+    // Global Test & Harness Bridge
+    window.state = state;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.switchDeskTo = switchDeskTo;
+    window.switchView = switchView;
+    window.triggerDynamicAutopsyScan = triggerDynamicAutopsyScan;
+    window.startOnboardingModal = startOnboardingModal;
   </script>
 </body>
 </html>

@@ -99,6 +99,34 @@ this.nativeComputeFsrs = nativeComputeFsrs;
 this.computeFsrsNextSync = computeFsrsNextSync;
 this.logMistakeEntry = logMistakeEntry;
 this.STORAGE_KEY = STORAGE_KEY;
+this.PROFILES_KEY = PROFILES_KEY;
+this.INTELLIGENCE_KEY = INTELLIGENCE_KEY;
+this.createEmptyIntelligence = createEmptyIntelligence;
+this.validateIntelligenceStore = validateIntelligenceStore;
+this.saveIntelligence = saveIntelligence;
+this.loadIntelligence = loadIntelligence;
+this.stablePatternId = stablePatternId;
+this.normalizeAnchor = normalizeAnchor;
+this.buildLegacyAttempts = buildLegacyAttempts;
+this.buildErrorPatterns = buildErrorPatterns;
+this.migrateIntelligence = migrateIntelligence;
+this.applyAssessmentToStore = applyAssessmentToStore;
+this.recordAssessment = recordAssessment;
+this.computeWeaknesses = computeWeaknesses;
+this.detectWeaknesses = detectWeaknesses;
+this.activityKindForTag = activityKindForTag;
+this.createCorrectiveActivity = createCorrectiveActivity;
+this.issueCorrectiveActivity = issueCorrectiveActivity;
+this.scheduleRetest = scheduleRetest;
+this.issueRetest = issueRetest;
+this.recordCorrectivePractice = recordCorrectivePractice;
+this.reopenWeakness = reopenWeakness;
+this.applyRetestResultToStore = applyRetestResultToStore;
+this.recordRetestResult = recordRetestResult;
+this.masteryFor = masteryFor;
+this.getChapterMastery = getChapterMastery;
+this.MASTERY_PRIOR = MASTERY_PRIOR;
+this.cloneJson = cloneJson;
 `;
 
 vm.runInContext(scriptMatch[1] + exportBridge, sandbox);
@@ -368,6 +396,246 @@ runSection('Suite 8: Systems IPC Bridge & Vision Autopsy Engine', () => {
 
   const nativeFsrs = sandbox.nativeComputeFsrs;
   assert(typeof nativeFsrs === 'function', 'nativeComputeFsrs IPC bridge exists');
+});
+
+runSection('Suite 9: Learning Intelligence — Data Model & Validation', () => {
+  const createEmptyIntelligence = sandbox.createEmptyIntelligence;
+  const validateIntelligenceStore = sandbox.validateIntelligenceStore;
+  assert(typeof createEmptyIntelligence === 'function', 'createEmptyIntelligence exists as executable function');
+  assert(typeof validateIntelligenceStore === 'function', 'validateIntelligenceStore exists as executable function');
+
+  const empty = createEmptyIntelligence();
+  assert(empty.version === 2, 'Empty intelligence store uses schema version 2', `Got ${empty.version}`);
+  ['attempts', 'errorPatterns', 'activities', 'retests', 'chapterMastery'].forEach(field => {
+    assert(Array.isArray(empty[field]) && empty[field].length === 0, `Empty store has empty ${field} array`);
+  });
+
+  const valid = validateIntelligenceStore({ ...empty, unexpected: 'drop-me' });
+  assert(valid.version === 2, 'Validator preserves valid schema version');
+  assert(valid.unexpected === undefined, 'Validator drops unknown fields');
+
+  let threwOnVersion = false;
+  try { validateIntelligenceStore({ ...empty, version: 1 }); } catch (err) { threwOnVersion = true; }
+  assert(threwOnVersion, 'Validator rejects unsupported schema version');
+
+  let threwOnField = false;
+  try { validateIntelligenceStore({ ...empty, attempts: 'not-an-array' }); } catch (err) { threwOnField = true; }
+  assert(threwOnField, 'Validator rejects malformed array field');
+
+  const normalizeAnchor = sandbox.normalizeAnchor;
+  assert(normalizeAnchor('  Sec²θ - tan²θ SIGN slip  ') === 'sec tan sign slip',
+    'Anchor normalization lowercases, strips symbols and collapses whitespace',
+    `Got "${normalizeAnchor('  Sec²θ - tan²θ SIGN slip  ')}"`);
+  assert(normalizeAnchor('   ') === '', 'Blank anchor normalizes to empty string');
+
+  const stablePatternId = sandbox.stablePatternId;
+  const idA = stablePatternId('maths-std-12', 8, 'FORMULA');
+  assert(idA === stablePatternId('maths-std-12', 8, 'FORMULA'), 'Pattern id is deterministic for same inputs');
+  assert(idA !== stablePatternId('maths-std-12', 9, 'FORMULA'), 'Pattern id changes with chapter');
+  assert(/^ep-[0-9a-f]{8}$/.test(idA), 'Pattern id has stable ep-<hash> shape', `Got ${idA}`);
+});
+
+runSection('Suite 10: Learning Intelligence — Migration & Backward Compatibility', () => {
+  const key = sandbox.INTELLIGENCE_KEY;
+  delete mockLocalStorage[key];
+
+  sandbox.state.studentName = 'Phase2 Student';
+  sandbox.state.examDateISO = '2027-02-25';
+  sandbox.state.mistakes = [
+    { id: 'm-1000-1', subjectId: 'maths-std-12', chapterId: 8, section: 'C', marksLost: 3, errorTag: 'FORMULA', microAnchor: 'Ch8 trig identity sign flip' },
+    { id: 'm-2000-2', subjectId: 'maths-std-12', chapterId: 8, section: 'C', marksLost: 3, errorTag: 'FORMULA', microAnchor: 'Ch8 trig identity sign flip' },
+    { id: 'm-3000-3', subjectId: 'maths-std-12', chapterId: 4, section: 'B', marksLost: 2, errorTag: 'SILLY', microAnchor: '' },
+    { id: 'm-4000-4', subjectId: 'science-11', chapterId: 11, section: 'C', marksLost: 2, errorTag: 'CONCEPT', microAnchor: 'Ohm law units' }
+  ];
+
+  const migrated = sandbox.migrateIntelligence();
+  assert(migrated.attempts.length === 2, 'Legacy mistakes grouped into 2 subject attempts', `Got ${migrated.attempts.length}`);
+  assert(migrated.attempts.every(a => a.scoreObtained === null), 'Legacy attempts carry no invented score');
+  assert(migrated.attempts.every(a => a.examDateISO === '2027-02-25'), 'Legacy attempts inherit exam date from v2 state');
+  assert(migrated.attempts.every(a => a.studentId === 'Phase2 Student'), 'Legacy attempts carry active student id');
+
+  const mathsAttempt = migrated.attempts.find(a => a.subjectId === 'maths-std-12');
+  const scienceAttempt = migrated.attempts.find(a => a.subjectId === 'science-11');
+  assert(mathsAttempt && mathsAttempt.mistakes.length === 3, 'Maths attempt holds 3 mapped mistakes');
+  assert(scienceAttempt && scienceAttempt.mistakes.length === 1, 'Science attempt holds 1 mapped mistake');
+  assert(mathsAttempt.mistakes[0].microAnchor === 'Ch8 trig identity sign flip', 'Micro-anchor preserved verbatim on attempt mistakes');
+
+  assert(migrated.errorPatterns.length === 3, 'Derived 3 recurring error patterns', `Got ${migrated.errorPatterns.length}`);
+  const trigPattern = migrated.errorPatterns.find(p => p.chapterId === 8 && p.errorTag === 'FORMULA');
+  assert(trigPattern && trigPattern.frequency === 2, 'Repeated trig formula error counted twice');
+  assert(trigPattern && trigPattern.patternId === sandbox.stablePatternId('maths-std-12', 8, 'FORMULA'), 'Pattern id derived deterministically');
+  assert(trigPattern && trigPattern.description === 'ch8 trig identity sign flip', 'Pattern description normalized from anchor');
+  const sillyPattern = migrated.errorPatterns.find(p => p.errorTag === 'SILLY');
+  assert(sillyPattern && sillyPattern.description === 'SILLY error in chapter 4', 'Missing anchor yields honest default description');
+  assert(sillyPattern && sillyPattern.trend === 'STABLE', 'New pattern starts with STABLE trend');
+
+  const persisted = mockLocalStorage[key];
+  assert(persisted != null, 'Intelligence store persisted to localStorage');
+  assert(JSON.parse(persisted).version === 2, 'Persisted store has schema version 2');
+
+  const v2Raw = mockLocalStorage[sandbox.STORAGE_KEY];
+  assert(v2Raw != null && Array.isArray(JSON.parse(v2Raw).mistakes), 'v2 active-desk key remains intact after migration');
+
+  const secondRun = sandbox.migrateIntelligence();
+  assert(secondRun.attempts.length === 2 && secondRun.errorPatterns.length === 3, 'Migration is idempotent on second run');
+
+  sandbox.saveIntelligence(migrated);
+  const loaded = sandbox.loadIntelligence();
+  assert(loaded.attempts.length === 2, 'Intelligence store round-trips through save/load');
+
+  mockLocalStorage[key] = '{corrupted';
+  let threwOnCorrupt = false;
+  try { sandbox.loadIntelligence(); } catch (err) { threwOnCorrupt = true; }
+  assert(threwOnCorrupt, 'Corrupted intelligence JSON is rejected explicitly');
+
+  let threwOnBadStore = false;
+  try { sandbox.saveIntelligence({ version: 99, attempts: [] }); } catch (err) { threwOnBadStore = true; }
+  assert(threwOnBadStore, 'Invalid store cannot be saved');
+
+  mockLocalStorage[key] = JSON.stringify(migrated);
+});
+
+function buildPhase3Attempt(attemptId, createdAt, mistakes) {
+  return {
+    attemptId: attemptId,
+    studentId: 'Shlok',
+    subjectId: 'maths-std-12',
+    examDateISO: '2027-02-25',
+    scoreObtained: 54,
+    createdAt: createdAt,
+    mistakes: mistakes || [
+      { subjectId: 'maths-std-12', chapterId: 8, section: 'C', marksLost: 3, errorTag: 'FORMULA', microAnchor: 'Ch8 trig identity sign flip' },
+      { subjectId: 'maths-std-12', chapterId: 8, section: 'C', marksLost: 3, errorTag: 'FORMULA', microAnchor: 'Ch8 trig identity sign flip' }
+    ]
+  };
+}
+
+function buildPhase3Activity() {
+  return {
+    activityId: 'ac-ep-test-1763000000000',
+    studentId: 'Shlok',
+    subjectId: 'maths-std-12',
+    chapterId: 8,
+    conceptIds: ['maths-std-12-c8'],
+    kind: 'FORMULA_REVIEW',
+    status: 'PENDING',
+    expectedOutcome: 'Rewrite trig identities on paper without a sign flip',
+    createdAt: 1763000000000,
+    linkedPatternIds: [sandbox.stablePatternId('maths-std-12', 8, 'FORMULA')]
+  };
+}
+
+runSection('Suite 11: Feedback Loop — Assessment Recording & Weakness Detection', () => {
+  const key = sandbox.INTELLIGENCE_KEY;
+  delete mockLocalStorage[key];
+  sandbox.state.studentName = 'Shlok';
+  sandbox.state.examDateISO = '2027-02-25';
+
+  const attempt = buildPhase3Attempt('at-p3-1', 1763000000000);
+  const applied = sandbox.applyAssessmentToStore(sandbox.createEmptyIntelligence(), attempt);
+  assert(applied.store.attempts.length === 1, 'Assessment stored as one attempt');
+  assert(applied.store.errorPatterns.length === 1, 'Assessment derived one error pattern');
+  assert(applied.store.errorPatterns[0].frequency === 2, 'Repeated mistake frequency counted as 2');
+  assert(applied.store.errorPatterns[0].latestAttemptId === 'at-p3-1', 'Pattern links back to source attempt');
+
+  const mastery = sandbox.getChapterMastery(applied.store, 'maths-std-12', 8);
+  assert(mastery.estimate === 0.1, 'Two assessment misses lower mastery from 0.3 to 0.1', `Got ${mastery.estimate}`);
+  assert(mastery.evidence.length === 2 && mastery.evidence.every(e => e.kind === 'ASSESSMENT_MISS'), 'Both misses recorded as evidence');
+
+  const replay = sandbox.applyAssessmentToStore(applied.store, attempt);
+  assert(replay.store.attempts.length === 1 && replay.store.errorPatterns[0].frequency === 2, 'Replaying same attempt is idempotent');
+
+  const weaknesses = sandbox.computeWeaknesses(applied.store);
+  assert(weaknesses.length === 1, 'One recurring weakness detected');
+  assert(weaknesses[0].severity === 'CRITICAL', 'Low mastery yields CRITICAL severity', `Got ${weaknesses[0].severity}`);
+  assert(weaknesses[0].marksAtRisk === 4.5, 'Marks at risk derived from chapter base 5 and mastery 0.1', `Got ${weaknesses[0].marksAtRisk}`);
+  assert(weaknesses[0].pattern.errorTag === 'FORMULA', 'Weakness retains error taxonomy tag');
+
+  const single = sandbox.applyAssessmentToStore(sandbox.createEmptyIntelligence(),
+    buildPhase3Attempt('at-p3-2', 1763000000100, [attempt.mistakes[0]])).store;
+  assert(sandbox.computeWeaknesses(single).length === 0, 'Single occurrence is not yet a recurring weakness');
+
+  mockLocalStorage[key] = JSON.stringify(applied.store);
+  assert(sandbox.detectWeaknesses().length === 1, 'detectWeaknesses wrapper reads persisted store');
+});
+
+runSection('Suite 12: Feedback Loop — Corrective Activities & Retest Scheduling', () => {
+  assert(sandbox.activityKindForTag('CONCEPT') === 'CONCEPT_REWORK', 'CONCEPT routes to concept rework');
+  assert(sandbox.activityKindForTag('FORMULA') === 'FORMULA_REVIEW', 'FORMULA routes to formula review');
+  assert(sandbox.activityKindForTag('SILLY') === 'DRILL_SET', 'SILLY routes to drill set');
+  assert(sandbox.activityKindForTag('TIME') === 'TIME_MANAGEMENT', 'TIME routes to time management');
+
+  const attempt = buildPhase3Attempt('at-p3-3', 1763000000000);
+  const store = sandbox.applyAssessmentToStore(sandbox.createEmptyIntelligence(), attempt).store;
+  const weakness = sandbox.computeWeaknesses(store)[0];
+  const activity = sandbox.createCorrectiveActivity(weakness, 'Shlok');
+  assert(activity.kind === 'FORMULA_REVIEW', 'Generated activity kind follows weakness tag');
+  assert(activity.conceptIds.length === 1 && activity.conceptIds[0] === 'maths-std-12-c8', 'Activity linked to failing concept');
+  assert(activity.status === 'PENDING', 'New corrective activity starts PENDING');
+  assert(activity.linkedPatternIds.indexOf(weakness.pattern.patternId) !== -1, 'Activity linked to its error pattern');
+
+  mockLocalStorage[sandbox.INTELLIGENCE_KEY] = JSON.stringify(store);
+  const issued = sandbox.issueCorrectiveActivity(weakness);
+  const issuedAgain = sandbox.issueCorrectiveActivity(weakness);
+  assert(issued.activityId === issuedAgain.activityId, 'Issue twice returns same activity (no duplicate)');
+  assert(sandbox.loadIntelligence().activities.length === 1, 'Only one activity persisted');
+
+  const far = sandbox.scheduleRetest(activity, '2027-02-25', '2026-11-20T00:00:00Z', 'at-p3-3');
+  assert(far.intervalDays === undefined, 'Retest contract exposes scheduledFor, not raw interval');
+  assert(far.scheduledFor === '2026-11-27', 'Far exam schedules a 7-day retest', `Got ${far.scheduledFor}`);
+  const near = sandbox.scheduleRetest(activity, '2027-02-25', '2027-02-21T00:00:00Z', 'at-p3-3');
+  assert(near.scheduledFor <= '2027-02-23', 'Near exam caps retest at exam minus 2 days', `Got ${near.scheduledFor}`);
+  assert(near.lastAttemptId === 'at-p3-3', 'Retest keeps the source attempt id');
+
+  const storedWithActivity = sandbox.loadIntelligence();
+  const beforePractice = sandbox.getChapterMastery(storedWithActivity, 'maths-std-12', 8).estimate;
+  sandbox.recordCorrectivePractice(activity.activityId);
+  const afterPractice = sandbox.masteryFor('maths-std-12', 8);
+  assert(sandbox.loadIntelligence().activities[0].status === 'PRACTICE_DONE', 'Practice marks activity PRACTICE_DONE');
+  assert(afterPractice.estimate === beforePractice, 'Practice alone grants zero mastery credit', `${beforePractice} -> ${afterPractice.estimate}`);
+});
+
+runSection('Suite 13: Feedback Loop — Retest Verification & Weakness Reopening', () => {
+  const key = sandbox.INTELLIGENCE_KEY;
+  const activity = buildPhase3Activity();
+  const patternId = sandbox.stablePatternId('maths-std-12', 8, 'FORMULA');
+  const makeStore = (retestId) => ({
+    version: 2,
+    attempts: [],
+    errorPatterns: [{ patternId: patternId, subjectId: 'maths-std-12', conceptId: 'maths-std-12-c8', chapterId: 8, errorTag: 'FORMULA', description: 'ch8 trig identity sign flip', frequency: 2, firstSeen: 1763000000000, lastSeen: 1763000000000, trend: 'STABLE', latestAttemptId: 'at-p3-1' }],
+    activities: [sandbox.cloneJson(activity)],
+    retests: [{ retestId: retestId, activityId: activity.activityId, studentId: 'Shlok', subjectId: 'maths-std-12', chapterId: 8, conceptIds: ['maths-std-12-c8'], scheduledFor: '2026-11-27', result: 'PENDING', marksLostAfter: null, lastAttemptId: 'at-p3-1', createdAt: 1763000000000, fsrsNextDueIso: '' }],
+    chapterMastery: [{ subjectId: 'maths-std-12', chapterId: 8, estimate: 0.1, evidence: [
+      { attemptId: 'at-p3-1', kind: 'ASSESSMENT_MISS', weight: -0.1, createdAt: 1763000000000 },
+      { attemptId: 'at-p3-2', kind: 'ASSESSMENT_MISS', weight: -0.1, createdAt: 1763000000100 }
+    ], lastVerified: 0 }]
+  });
+
+  mockLocalStorage[key] = JSON.stringify(makeStore('rt-pass-1'));
+  sandbox.recordRetestResult('rt-pass-1', 'PASS', 0);
+  const passed = sandbox.loadIntelligence();
+  assert(passed.activities[0].status === 'VERIFIED', 'Passing verification marks activity VERIFIED');
+  assert(passed.retests[0].result === 'PASS', 'Retest result recorded as PASS');
+  assert(passed.retests[0].fsrsNextDueIso !== '', 'PASS feeds the existing FSRS scheduler');
+  assert(passed.chapterMastery[0].estimate === 0.35, 'Passing evidence raises mastery by 0.25', `Got ${passed.chapterMastery[0].estimate}`);
+  assert(passed.chapterMastery[0].evidence.some(e => e.kind === 'RETRY_PASS'), 'Mastery claim has supporting evidence');
+
+  mockLocalStorage[key] = JSON.stringify(makeStore('rt-fail-1'));
+  sandbox.recordRetestResult('rt-fail-1', 'FAIL', 3);
+  const failed = sandbox.loadIntelligence();
+  assert(failed.activities[0].status === 'REOPENED', 'Failing verification reopens the weakness');
+  assert(failed.retests[0].result === 'FAIL', 'Original retest recorded as FAIL');
+  assert(failed.retests.length === 2 && failed.retests[1].result === 'PENDING', 'A fresh retest is scheduled after failure');
+  assert(failed.retests[1].retestId === 'rt-fail-1-retry-1', 'Reopened retest has deterministic id');
+  assert(failed.chapterMastery[0].estimate === 0, 'Failure lowers mastery, clamped at zero', `Got ${failed.chapterMastery[0].estimate}`);
+  assert(failed.chapterMastery[0].evidence.some(e => e.kind === 'RETRY_FAIL'), 'Reopen has supporting evidence');
+
+  mockLocalStorage[key] = JSON.stringify(makeStore('rt-pass-1'));
+  let threwOnUnknown = false;
+  try { sandbox.recordRetestResult('rt-does-not-exist', 'PASS', 0); } catch (err) { threwOnUnknown = true; }
+  assert(threwOnUnknown, 'Unknown retest id is rejected explicitly');
+
+  mockLocalStorage[key] = JSON.stringify(sandbox.createEmptyIntelligence());
 });
 
 // ==========================================
