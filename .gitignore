@@ -21,3 +21,6 @@ desktop.ini
 # Temporary scratch files
 scratch/
 **/scratch/
+
+# Zip archives
+*.zip
