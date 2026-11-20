@@ -49,3 +49,39 @@ pub fn schedule_review(
         retention_target,
     })
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_again_rating_resets_interval() {
+        let res = schedule_review(2.5, ReviewRating::Again, "2027-02-25").unwrap();
+        assert_eq!(res.next_interval_days, 1);
+        assert_eq!(res.next_stability_days, 1.0);
+    }
+
+    #[test]
+    fn test_ratings_scale_monotonically() {
+        let hard = schedule_review(1.5, ReviewRating::Hard, "2027-02-25").unwrap();
+        let good = schedule_review(1.5, ReviewRating::Good, "2027-02-25").unwrap();
+        let easy = schedule_review(1.5, ReviewRating::Easy, "2027-02-25").unwrap();
+        assert!(hard.next_interval_days <= good.next_interval_days);
+        assert!(good.next_interval_days <= easy.next_interval_days);
+    }
+
+    #[test]
+    fn test_exam_cap_boundary() {
+        let today = Utc::now().date_naive();
+        let near_exam = today + Duration::days(4);
+        let res = schedule_review(20.0, ReviewRating::Easy, &near_exam.format("%Y-%m-%d").to_string()).unwrap();
+        assert!(res.next_interval_days <= 2, "Exam in 4d must cap interval to <= 2d");
+    }
+
+    #[test]
+    fn test_invalid_exam_date_returns_error() {
+        let res = schedule_review(1.5, ReviewRating::Good, "not-a-date");
+        assert!(res.is_err());
+    }
+}

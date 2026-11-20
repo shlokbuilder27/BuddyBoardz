@@ -64,3 +64,44 @@ pub fn simulate_gseb_109(chapters: &[ChapterWeight]) -> SimulationResult {
         passes_theory_floor: achievable_score >= 26,
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_master_all_chapters_passes() {
+        let chapters = vec![
+            ChapterWeight { id: 1, base_marks: 4, with_option_marks: 4, state: ChapterState::Master },
+            ChapterWeight { id: 2, base_marks: 6, with_option_marks: 9, state: ChapterState::Master },
+            ChapterWeight { id: 3, base_marks: 8, with_option_marks: 12, state: ChapterState::Master },
+            ChapterWeight { id: 4, base_marks: 5, with_option_marks: 7, state: ChapterState::Master },
+            ChapterWeight { id: 5, base_marks: 6, with_option_marks: 9, state: ChapterState::Master },
+            ChapterWeight { id: 6, base_marks: 5, with_option_marks: 9, state: ChapterState::Master },
+            ChapterWeight { id: 7, base_marks: 5, with_option_marks: 5, state: ChapterState::Master },
+            ChapterWeight { id: 8, base_marks: 5, with_option_marks: 7, state: ChapterState::Master },
+            ChapterWeight { id: 9, base_marks: 4, with_option_marks: 4, state: ChapterState::Master },
+            ChapterWeight { id: 10, base_marks: 6, with_option_marks: 9, state: ChapterState::Master },
+            ChapterWeight { id: 11, base_marks: 4, with_option_marks: 4, state: ChapterState::Master },
+            ChapterWeight { id: 12, base_marks: 8, with_option_marks: 12, state: ChapterState::Master },
+            ChapterWeight { id: 13, base_marks: 8, with_option_marks: 10, state: ChapterState::Master },
+            ChapterWeight { id: 14, base_marks: 6, with_option_marks: 8, state: ChapterState::Master },
+        ];
+        let sim = simulate_gseb_109(&chapters);
+        assert_eq!(sim.achievable_score, 80);
+        assert_eq!(sim.max_sec_a, 24);
+        assert!(sim.passes_theory_floor);
+    }
+
+    #[test]
+    fn test_skip_all_triggers_pass_floor_failure() {
+        let chapters = vec![
+            ChapterWeight { id: 1, base_marks: 4, with_option_marks: 4, state: ChapterState::Skip },
+            ChapterWeight { id: 2, base_marks: 6, with_option_marks: 9, state: ChapterState::Skip },
+        ];
+        let sim = simulate_gseb_109(&chapters);
+        assert_eq!(sim.achievable_score, 0);
+        assert!(!sim.passes_theory_floor);
+    }
+}

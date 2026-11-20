@@ -22,7 +22,7 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$RESOURCE/**", "G:/Personal/SHLOK/Projects/BuddyBoardz/Assets/**"]
+        "scope": ["$RESOURCE/**", "../Assets/**", "./icons/**"]
       }
     }
   }

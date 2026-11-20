@@ -933,7 +933,7 @@
       #buddy-avatar-btn { width: 64px; height: 64px; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="vendor/tesseract/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -2208,8 +2208,65 @@
         const lowerOcr = ocrText.toLowerCase();
         chosen = subjRules.find(rule => rule.keywords.some(k => lowerOcr.includes(k)));
       }
+
+      const ocrBox = document.getElementById('ai-ocr-text-container');
+      const ocrInput = document.getElementById('ai-recognized-text');
+      const ocrConfPill = document.getElementById('ai-ocr-confidence-pill');
+
       if (!chosen) {
-        chosen = subjRules[Math.floor(Math.random() * subjRules.length)];
+        // Honest pedagogical reality: Never invent a fake chapter!
+        currentDiag = {
+          unidentified: true,
+          subjectId: activeSub,
+          chapterId: null,
+          title: 'Unidentified Paper Question',
+          sec: 'B',
+          marks: 2,
+          flaw: '<strong>Low Confidence Scan:</strong> OCR could not match this handwriting to a specific chapter with high confidence. Please tap your question\'s chapter below to log accurately.',
+          tag: 'CONCEPT',
+          speech: 'I could not clearly identify the chapter. Please tap your chapter from the chips below.'
+        };
+
+        if (ocrBox && ocrInput) {
+          ocrBox.style.display = 'block';
+          ocrInput.value = ocrText || 'No clear text detected. Tap chapter below:';
+          if (ocrConfPill) {
+            ocrConfPill.textContent = ocrText ? `${ocrConfidence}% OCR · Unmatched Syllabus` : 'Low OCR Confidence';
+          }
+        }
+
+        document.getElementById('ai-diag-chapter').textContent = '⚠️ Unidentified Question (Tap Chapter Below)';
+        document.getElementById('ai-diag-sec').textContent = 'Section Pending';
+        document.getElementById('ai-diag-tag').textContent = 'MANUAL CLARIFY';
+        document.getElementById('ai-diag-tag').className = 'onboard-step-pill tag-concept';
+
+        const subj = BLUEPRINTS[activeSub];
+        let chapterChipsHtml = '<div style="margin-top:10px;font-size:0.8rem;color:var(--ink-soft);font-weight:700;">Tap to select chapter:</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">';
+        subj.chapters.forEach(c => {
+          chapterChipsHtml += `<button type="button" class="chip-btn ocr-chapter-pick-btn" data-chid="${c.id}" style="padding:4px 8px;font-size:0.75rem;">Ch.${c.id} ${escapeHtml(c.title.slice(0, 18))}</button>`;
+        });
+        chapterChipsHtml += '</div>';
+
+        document.getElementById('ai-diag-flaw-text').innerHTML = currentDiag.flaw + chapterChipsHtml;
+
+        document.querySelectorAll('.ocr-chapter-pick-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const pickedChId = Number(btn.dataset.chid);
+            const pickedCh = subj.chapters.find(c => c.id === pickedChId);
+            currentDiag.chapterId = pickedChId;
+            currentDiag.title = `Ch ${pickedChId}: ${pickedCh ? pickedCh.title : ''}`;
+            currentDiag.unidentified = false;
+            document.getElementById('ai-diag-chapter').textContent = currentDiag.title;
+            document.getElementById('ai-diag-sec').textContent = 'Sec B · -2M';
+            document.getElementById('ai-diag-tag').textContent = 'CONCEPT';
+            document.getElementById('ai-diag-flaw-text').innerHTML = `<strong>Selected Ch.${pickedChId} (${pickedCh ? pickedCh.title : ''}):</strong> Tap "1-Tap Log Mistake" below to add to your study radar.`;
+            buddyReact(`Locked Ch.${pickedChId} (${pickedCh ? pickedCh.title : ''})! Tap below to log.`, 'happy');
+          });
+        });
+
+        buddyReact('Could not clearly read that question. Please tap your chapter from the chips above!', 'think');
+        speakBuddy('Could not clearly identify that question. Please tap your chapter.');
+        return;
       }
 
       const subj = BLUEPRINTS[activeSub];
@@ -2227,9 +2284,6 @@
       };
 
       // Populate OCR Box
-      const ocrBox = document.getElementById('ai-ocr-text-container');
-      const ocrInput = document.getElementById('ai-recognized-text');
-      const ocrConfPill = document.getElementById('ai-ocr-confidence-pill');
       if (ocrBox && ocrInput) {
         ocrBox.style.display = 'block';
         ocrInput.value = ocrText || `Q.${chosen.id * 3 + 2} Identified question from ${ch ? ch.title : ''} with red deduction marks.`;
