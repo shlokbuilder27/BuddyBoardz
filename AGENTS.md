@@ -94,13 +94,17 @@ When running inside Tauri, the JavaScript frontend communicates with the Rust ba
 ### IPC Command Signatures (`src-tauri/src/main.rs`)
 ```rust
 #[tauri::command]
-fn calculate_simulation(subject_id: String, chapter_states: HashMap<u32, String>) -> SimulationResult;
+pub fn run_simulation(chapters: Vec<ChapterWeight>) -> SimulationResult;
 
 #[tauri::command]
-fn schedule_retest_fsrs(card_id: String, rating: String, stability: f64, exam_date_iso: String) -> FsrsResult;
+pub fn compute_fsrs_next(
+    stability: f64,
+    rating: ReviewRating,
+    exam_date_iso: String,
+) -> Result<NextReview, String>;
 
 #[tauri::command]
-fn save_desk_profile_atomic(profile_json: String) -> Result<bool, String>;
+pub fn save_atomic_backup(path: String, json_payload: String) -> Result<(), String>;
 ```
 
 ---

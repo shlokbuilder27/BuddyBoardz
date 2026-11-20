@@ -96,6 +96,9 @@ this.ONBOARD_QUESTIONS = ONBOARD_QUESTIONS;
 this.SYLLABUS_KEYWORDS = SYLLABUS_KEYWORDS;
 this.nativeRunSimulation = nativeRunSimulation;
 this.nativeComputeFsrs = nativeComputeFsrs;
+this.computeFsrsNextSync = computeFsrsNextSync;
+this.logMistakeEntry = logMistakeEntry;
+this.STORAGE_KEY = STORAGE_KEY;
 `;
 
 vm.runInContext(scriptMatch[1] + exportBridge, sandbox);
@@ -211,49 +214,83 @@ runSection('Suite 3: Track Isolation (Standard 12 vs Basic 18)', () => {
     'Q3 dynamically yields Maths Standard when Standard track chosen');
 });
 
-// Suite 4: Mistake Taxonomy & Routing Rules
-runSection('Suite 4: Mistake Taxonomy & Routing Rules', () => {
-  const DEFAULT_STATE = sandbox.DEFAULT_STATE;
-  assert(Array.isArray(DEFAULT_STATE.mistakes) && DEFAULT_STATE.mistakes.length === 0,
-    'Clean desk baseline has 0 mistakes initially');
-  assert(DEFAULT_STATE.xp === 0, 'Clean desk baseline starts at 0 XP');
-  assert(DEFAULT_STATE.streak === 0, 'Clean desk baseline starts at 0 Streak');
+// Suite 4: Real Functional Mistake Logging & Routing
+runSection('Suite 4: Functional Mistake Logging & Domain Pipeline', () => {
+  const logMistakeEntry = sandbox.logMistakeEntry;
+  assert(typeof logMistakeEntry === 'function', 'logMistakeEntry exists as an executable domain function');
 
-  // Test routing logic: CONCEPT & FORMULA get dueAt, SILLY & TIME get null
-  const testConcept = {
-    errorTag: 'CONCEPT',
-    dueAt: (['CONCEPT', 'FORMULA'].includes('CONCEPT')) ? Date.now() : null
-  };
-  const testSilly = {
+  // Reset state to clean baseline
+  sandbox.state.mistakes = [];
+  sandbox.state.xp = 0;
+
+  // Log a FORMULA mistake via real application function
+  const entryFormula = logMistakeEntry({
+    subjectId: 'maths-std-12',
+    chapterId: 8,
+    section: 'C',
+    marksLost: 3,
+    errorTag: 'FORMULA',
+    paperLabel: 'Vraj Paper 1',
+    microAnchor: 'sec²θ - tan²θ sign slip'
+  });
+
+  assert(sandbox.state.mistakes.length === 1, 'state.mistakes count incremented to 1');
+  assert(sandbox.state.xp === 15, 'state.xp rewarded by exactly +15 XP (Got ' + sandbox.state.xp + ')');
+  assert(entryFormula.dueAt !== null && typeof entryFormula.dueAt === 'number',
+    'FORMULA mistake routed to FSRS with active dueAt timestamp');
+
+  // Log a SILLY mistake via real application function
+  const entrySilly = logMistakeEntry({
+    subjectId: 'maths-std-12',
+    chapterId: 4,
+    section: 'B',
+    marksLost: 2,
     errorTag: 'SILLY',
-    dueAt: (['CONCEPT', 'FORMULA'].includes('SILLY')) ? Date.now() : null
-  };
+    paperLabel: 'Navneet Paper 1'
+  });
 
-  assert(testConcept.dueAt !== null, 'CONCEPT flaw routes to FSRS review with active dueAt timestamp');
-  assert(testSilly.dueAt === null, 'SILLY flaw has dueAt = null (routes to Pre-Exam Landmines)');
+  assert(sandbox.state.mistakes.length === 2, 'state.mistakes count incremented to 2');
+  assert(sandbox.state.xp === 30, 'state.xp accumulated to exactly +30 XP');
+  assert(entrySilly.dueAt === null, 'SILLY mistake assigned dueAt = null (routes strictly to Landmine Checklist)');
+
+  // Verify persistence into localStorage
+  const savedRaw = sandbox.localStorage.getItem(sandbox.STORAGE_KEY);
+  assert(savedRaw != null, 'Application state saved to localStorage');
+  const savedState = JSON.parse(savedRaw);
+  assert(savedState.mistakes.length === 2, 'localStorage accurately holds both logged mistakes');
+  assert(savedState.xp === 30, 'localStorage accurately holds updated 30 XP');
 });
 
-// Suite 5: FSRS Spaced Repetition Math & Exam Cap
+// Suite 5: Real FSRS Engine Execution & Exam Cap
 runSection('Suite 5: FSRS Spaced Memory Math & Board Exam Cap', () => {
-  const daysUntilExam = sandbox.daysUntilExam;
-  assert(typeof daysUntilExam === 'function', 'daysUntilExam function exists');
+  const computeFsrsNextSync = sandbox.computeFsrsNextSync;
+  assert(typeof computeFsrsNextSync === 'function', 'computeFsrsNextSync exists as an executable domain function');
 
-  const daysLeft = daysUntilExam();
-  assert(typeof daysLeft === 'number' && daysLeft > 0, `Days until Feb 25, 2027 board exam is positive (${daysLeft} days)`);
+  const examDate = '2027-02-25';
 
-  const maxInterval = Math.max(1, daysLeft - 2);
-  const s = 1.5;
-  const intervals = {
-    AGAIN: 1,
-    HARD: Math.min(maxInterval, Math.max(1, Math.round(s * 1.2))),
-    GOOD: Math.min(maxInterval, Math.max(2, Math.round(s * 2.1))),
-    EASY: Math.min(maxInterval, Math.max(4, Math.round(s * 3.4)))
-  };
+  // 1. AGAIN rating resets interval to 1 day and stability to 1.0
+  const resAgain = computeFsrsNextSync(2.5, 'AGAIN', examDate);
+  assert(resAgain.intervalDays === 1, 'AGAIN rating always resets interval to 1 day', `Got ${resAgain.intervalDays}`);
+  assert(resAgain.stability === 1.0, 'AGAIN resets stability to 1.0');
 
-  assert(intervals.AGAIN === 1, 'AGAIN rating always resets interval to 1 day');
-  assert(intervals.HARD <= intervals.GOOD, 'HARD interval <= GOOD interval');
-  assert(intervals.GOOD <= intervals.EASY, 'GOOD interval <= EASY interval');
-  assert(intervals.EASY <= maxInterval, `EASY interval (${intervals.EASY}d) does not breach exam cap (${maxInterval}d)`);
+  // 2. HARD rating scales moderately
+  const resHard = computeFsrsNextSync(1.5, 'HARD', examDate);
+  assert(resHard.intervalDays >= 1, 'HARD interval is >= 1 day', `Got ${resHard.intervalDays}`);
+
+  // 3. GOOD rating provides solid spacing
+  const resGood = computeFsrsNextSync(1.5, 'GOOD', examDate);
+  assert(resGood.intervalDays >= resHard.intervalDays, 'GOOD interval >= HARD interval',
+    `GOOD: ${resGood.intervalDays}d, HARD: ${resHard.intervalDays}d`);
+
+  // 4. EASY rating provides maximum spacing
+  const resEasy = computeFsrsNextSync(1.5, 'EASY', examDate);
+  assert(resEasy.intervalDays >= resGood.intervalDays, 'EASY interval >= GOOD interval',
+    `EASY: ${resEasy.intervalDays}d, GOOD: ${resGood.intervalDays}d`);
+
+  // 5. Hard Exam Cap Boundary Condition (exam in 4 days -> max interval is 2 days)
+  const nearExamDate = new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0];
+  const cappedRes = computeFsrsNextSync(20.0, 'EASY', nearExamDate);
+  assert(cappedRes.intervalDays <= 2, `Interval capped to <= 2d before exam (Got ${cappedRes.intervalDays}d)`);
 });
 
 // Suite 6: Multi-Student Desk Isolation & Storage
