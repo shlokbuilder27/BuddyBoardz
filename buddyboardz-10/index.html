@@ -123,6 +123,31 @@
       position: relative;
       animation: modalReveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
+
+    /* Targeted Paper Challenge Modal */
+    #challenge-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(17, 17, 17, 0.72);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    #challenge-modal.active { display: flex; }
+
+    .challenge-box {
+      width: 100%;
+      max-width: 540px;
+      background: #FFFFFF;
+      border: 2px solid #111111;
+      box-shadow: 10px 10px 0 #111111;
+      padding: 26px 28px;
+      position: relative;
+      animation: modalReveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
     @keyframes modalReveal {
       from { opacity: 0; transform: translateY(16px) scale(0.97); }
       to { opacity: 1; transform: translateY(0) scale(1); }
@@ -1299,6 +1324,19 @@
       </div>
 
       <div class="arena-card" id="retest-arena-box"></div>
+
+      <!-- Pillar 05: Closed Feedback Loop Demonstrated Retest Proofs -->
+      <div class="card" id="retest-verifications-card" style="margin-top:24px;">
+        <div class="hero-eyebrow">Pillar 05 · Evidence-Based Mastery</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Demonstrated Paper Retest Queue</h2>
+            <div style="font-size:0.84rem;color:var(--ink-soft);margin-top:2px;">Targeted paper practices awaiting verification in your next real exam paper.</div>
+          </div>
+          <span class="runtime-badge" id="retest-pending-badge" style="background:var(--skin);">0 Pending Proofs</span>
+        </div>
+        <div id="retest-verifications-list" class="chapter-list"></div>
+      </div>
     </section>
 
     <!-- VIEW 5: STREAKS, ANIMAL MILESTONES & FRIENDS -->
@@ -1353,6 +1391,30 @@
           <h1 class="hero-title">Profile &amp; Desktop Settings</h1>
         </div>
         <button class="btn-secondary" id="replay-intro-btn" type="button">Replay Intro Animation</button>
+      </div>
+
+      <!-- Module 01: Academic Diagnostic Profile & Weakness Radar (Pillar 01 -> Pillar 05) -->
+      <div class="card skin" id="academic-diagnostic-profile-card" style="margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="hero-eyebrow">Pillar 01: Know Yourself · Closed Feedback Loop</div>
+            <h2 style="font-size:1.35rem;font-weight:700;margin:0 0 4px 0;">Academic Diagnostic Profile &amp; Weakness Radar</h2>
+            <div style="font-size:0.86rem;color:var(--ink-soft);">
+              Calibrated from 7-Q human onboarding diagnostic &amp; evaluated paper mistake slips.
+            </div>
+          </div>
+          <button class="btn-secondary" id="profile-retake-diag-top" type="button" style="font-size:0.82rem;padding:6px 12px;">Recalibrate 7-Q Diagnostic</button>
+        </div>
+
+        <div id="academic-diag-summary"></div>
+
+        <div style="margin-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div class="stat-label" style="margin:0;">Active Weakness Clusters (Evidence-Driven)</div>
+            <span style="font-size:0.78rem;color:var(--ink-soft);font-family:monospace;">BAYESIAN MARKS-AT-RISK</span>
+          </div>
+          <div id="academic-weakness-clusters"></div>
+        </div>
       </div>
 
       <div class="grid-2">
@@ -1519,6 +1581,39 @@
     </div>
   </div>
 
+  <!-- TARGETED PAPER CHALLENGE MODAL (Pillar 01 -> Corrective Action) -->
+  <div id="challenge-modal" role="dialog" aria-modal="true">
+    <div class="challenge-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span class="onboard-step-pill" id="challenge-tag-badge">SILLY</span>
+        <span style="font-size:0.75rem;letter-spacing:0.04em;color:var(--ink-soft);font-family:monospace;">HAND BACK TO PAPER</span>
+      </div>
+      <h2 style="font-size:1.35rem;font-weight:700;margin:0 0 6px 0;" id="challenge-chapter-title">Ch.4: Quadratic Equations</h2>
+      <p style="font-size:0.86rem;color:var(--ink-soft);margin:0 0 16px 0;">
+        Solve this targeted single-question challenge on physical paper with pen.
+      </p>
+
+      <div style="background:var(--skin);border:1.5px solid #111;padding:16px;margin-bottom:14px;">
+        <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;">Paper Problem Prompt:</div>
+        <div id="challenge-question-text" style="font-size:1rem;font-weight:600;line-height:1.45;color:var(--ink);"></div>
+      </div>
+
+      <div style="background:var(--beige);border:1.5px solid #111;padding:12px 14px;margin-bottom:18px;">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;">Landmine Invariant Rule:</div>
+        <div id="challenge-hint-text" style="font-size:0.86rem;color:var(--ink-soft);line-height:1.4;"></div>
+      </div>
+
+      <div style="font-size:0.82rem;color:var(--ink-soft);line-height:1.4;margin-bottom:14px;background:#FFF;border-left:3px solid #D04A36;padding:8px 12px;">
+        <strong>First Principle:</strong> Solving this exercise proves technique understanding, but grants <strong>0 XP mastery credit</strong>. You must demonstrate resolution in your next real exam paper.
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <button class="btn-secondary" id="challenge-close-btn" type="button">Close</button>
+        <button class="btn-primary" id="challenge-mark-done-btn" type="button">Mark Paper Practice Done &rarr;</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" role="status" aria-live="polite"></div>
 
   <script>
@@ -1670,6 +1765,8 @@
         simStates: profileData.simStates || {},
         mistakes: profileData.mistakes || [],
         friends: profileData.friends || [],
+        diagnosticProfile: profileData.diagnosticProfile || {},
+        intelligence: (function() { try { return loadIntelligence(); } catch { return createEmptyIntelligence(); } })(),
         lastActive: Date.now()
       };
       if (idx >= 0) {
@@ -1762,8 +1859,37 @@
       };
       state.mistakes.unshift(entry);
       state.xp += 15;
+
+      // Record assessment attempt in IntelligenceStore BEFORE saving desk profile
+      try {
+        if (typeof loadIntelligence === 'function' && typeof applyAssessmentToStore === 'function') {
+          const store = loadIntelligence();
+          const attempt = {
+            attemptId: 'at-' + entry.id,
+            studentId: state.studentName || 'Student',
+            subjectId: entry.subjectId,
+            examDateISO: state.examDateISO || '2027-02-25',
+            scoreObtained: null,
+            createdAt: Date.now(),
+            mistakes: [{
+              subjectId: entry.subjectId,
+              chapterId: entry.chapterId,
+              section: entry.section,
+              marksLost: entry.marksLost,
+              errorTag: entry.errorTag,
+              microAnchor: entry.microAnchor || entry.paperLabel || ''
+            }]
+          };
+          const applied = applyAssessmentToStore(store, attempt);
+          saveIntelligence(applied.store);
+        }
+      } catch (err) {
+        // Non-blocking in headless mock tests
+      }
+
       saveState();
       registerOrUpdateProfile(state);
+
       return entry;
     }
 
@@ -2155,6 +2281,304 @@
       return getChapterMastery(loadIntelligence(), subjectId, chapterId);
     }
 
+    /* ================= GSEB CLASS 10 TARGETED PAPER CHALLENGE BANK ================= */
+    const CHALLENGE_BANK = {
+      1: {
+        FORMULA: { q: 'Prove that √5 is an irrational number by the method of contradiction.', hint: 'Invariant: Write 5 divides p² ⇒ 5 divides p. Substitute p = 5k and deduce 5 divides q on paper.' },
+        SILLY: { q: 'Explain why 7 × 11 × 13 + 13 and 7 × 6 × 5 × 4 × 3 × 2 × 1 + 5 are composite numbers.', hint: 'Invariant: Factor out 13(77 + 1) = 13 × 78 explicitly on paper.' }
+      },
+      4: {
+        SILLY: { q: 'Find the roots of the quadratic equation 2x² - 5x + 3 = 0 using the quadratic formula.', hint: 'Invariant: Write out b² - 4ac inside brackets [(-5)² - 4(2)(3)] explicitly before applying the ± sign.' },
+        FORMULA: { q: 'Find the discriminant of 3x² - 2x + 1/3 = 0 and hence state the nature of its roots.', hint: 'Invariant: D = b² - 4ac = (-2)² - 4(3)(1/3) = 4 - 4 = 0.' },
+        CONCEPT: { q: 'A motor boat whose speed is 18 km/h in still water takes 1 hour more to go 24 km upstream than downstream. Set up and solve the equation on paper.', hint: 'Invariant: Set up 24/(18 - x) - 24/(18 + x) = 1 on paper.' }
+      },
+      5: {
+        FORMULA: { q: 'Find the 20th term from the last term of the AP: 3, 8, 13, ..., 253.', hint: 'Invariant: Reverse the AP (a = 253, d = -5) or apply l - (n - 1)d.' },
+        SILLY: { q: 'The sum of first n terms of an AP is given by Sₙ = 3n² + 5n. Find the common difference d.', hint: 'Invariant: d = S₂ - 2S₁ or find a₁ = S₁ and a₂ = S₂ - S₁.' }
+      },
+      7: {
+        SILLY: { q: 'Find the coordinates of the point which divides the join of (-1, 7) and (4, -3) in the ratio 2 : 3.', hint: 'Invariant: Explicitly label x₁=-1, y₁=7, x₂=4, y₂=-3, m₁=2, m₂=3 on paper before substituting into the section formula.' },
+        FORMULA: { q: 'Find the ratio in which the y-axis divides the line segment joining the points (5, -6) and (-1, -4).', hint: 'Invariant: On the y-axis, the x-coordinate is strictly 0. Set m₁x₂ + m₂x₁ = 0.' }
+      },
+      8: {
+        FORMULA: { q: 'Prove the identity: (sin θ - 2 sin³ θ) / (2 cos³ θ - cos θ) = tan θ.', hint: 'Invariant: Factor out sin θ and cos θ. Replace 1 with (sin² θ + cos² θ) explicitly on paper.' },
+        SILLY: { q: 'If tan(A + B) = √3 and tan(A - B) = 1/√3; 0° < A + B ≤ 90°; A > B, find A and B.', hint: 'Invariant: A + B = 60°, A - B = 30° ⇒ 2A = 90° ⇒ A = 45°, B = 15°.' }
+      },
+      12: {
+        SILLY: { q: 'A toy is in the form of a cone of radius 3.5 cm mounted on a hemisphere of same radius. Total height is 15.5 cm. Find its surface area.', hint: 'Invariant: Cone height h = 15.5 - 3.5 = 12 cm. Slant height l = √(12² + 3.5²) = 12.5 cm.' }
+      },
+      13: {
+        SILLY: { q: 'The marks distribution of 30 students is given. Calculate Median.', hint: 'Invariant: Do not confuse frequency f with cumulative frequency cf in Median = l + ((n/2 - cf)/f) × h.' }
+      }
+    };
+
+    let activeChallengeActivity = null;
+
+    function openChallengeModal(weakness) {
+      const modal = document.getElementById('challenge-modal');
+      if (!modal) return;
+
+      const act = issueCorrectiveActivity(weakness);
+      activeChallengeActivity = act;
+
+      const bp = BLUEPRINTS[act.subjectId] || BLUEPRINTS[state.activeSubject];
+      const ch = bp ? bp.chapters.find(c => c.id === act.chapterId) : null;
+      const chTitle = ch ? ch.title : `Chapter ${act.chapterId}`;
+
+      const bankCh = CHALLENGE_BANK[act.chapterId] || {};
+      const challengeItem = bankCh[weakness.pattern.errorTag] || bankCh.SILLY || bankCh.FORMULA || {
+        q: `Solve one standard GSEB Board problem from Chapter ${act.chapterId} (${chTitle}) focusing strictly on ${weakness.pattern.errorTag} precision.`,
+        hint: `Invariant: Write down every single step on physical paper without mental leaps.`
+      };
+
+      const titleEl = document.getElementById('challenge-chapter-title');
+      if (titleEl) titleEl.textContent = `Ch.${act.chapterId}: ${chTitle}`;
+      const tagEl = document.getElementById('challenge-tag-badge');
+      if (tagEl) tagEl.textContent = weakness.pattern.errorTag;
+      const qEl = document.getElementById('challenge-question-text');
+      if (qEl) qEl.textContent = challengeItem.q;
+      const hEl = document.getElementById('challenge-hint-text');
+      if (hEl) hEl.textContent = challengeItem.hint;
+
+      modal.classList.add('active');
+      buddyReact('Here is your targeted question. Solve it on paper with pen right now!', 'think');
+    }
+
+    function closeChallengeModal() {
+      const modal = document.getElementById('challenge-modal');
+      if (modal) modal.classList.remove('active');
+      activeChallengeActivity = null;
+    }
+
+    function renderAcademicProfile() {
+      const card = document.getElementById('academic-diagnostic-profile-card');
+      if (!card) return;
+
+      const profile = state.diagnosticProfile || {};
+      const baselineMap = {
+        panic: 'Below 40 / 80 (Pass floor at risk)',
+        border: '40 to 55 / 80 (Passing, but insecure)',
+        solid: '56 to 70 / 80 (Solid, want distinction)',
+        topper: '70+ / 80 (Targeting 80/80 Topper)'
+      };
+      const leakMap = {
+        signs: 'SILLY · Bracket minus & sign slips',
+        formula: 'FORMULA · Forgot identity in middle of proof',
+        time: 'TIME · Ran out of time in Section D',
+        concept: 'CONCEPT · Missing conceptual prerequisite'
+      };
+      const seriesMap = {
+        vraj: 'Vraj Model Question Papers',
+        navneet: 'Navneet Practice Question Papers',
+        gala: 'Gala Model Question Papers',
+        school: 'School Prelims & Tuition Papers',
+        past: 'GSEB Past 5-Year Board Papers'
+      };
+      const targetMap = {
+        pass: 'Pass Floor (Safe 33%+ guaranteed)',
+        first: 'First Class (60%+)',
+        distinction: 'Distinction (75%+)',
+        merit: 'State Merit / A1 Grade (90%+)'
+      };
+
+      const baselineText = baselineMap[profile.last_score] || (state.mistakes.length ? `${state.mistakes.length} mistakes logged` : 'Calibrated baseline pending');
+      const leakText = leakMap[profile.main_leak] || (state.mistakes.length ? `${state.mistakes[0].errorTag} flaw observed` : 'Calibrated from test slips');
+      const seriesText = seriesMap[profile.test_series] || 'Vraj & Navneet Papers';
+      const targetText = targetMap[profile.target] || (state.strategyMode === 'TOPPER' ? 'State Merit (90%+)' : 'Safe 33%+ Floor');
+
+      const diagSummaryEl = document.getElementById('academic-diag-summary');
+      if (diagSummaryEl) {
+        diagSummaryEl.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin:12px 0 18px 0;">
+            <div style="border:1.5px solid #111;background:#FFF;padding:10px 14px;">
+              <div style="font-size:0.75rem;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">Baseline Mock Score</div>
+              <div style="font-size:0.92rem;font-weight:700;margin-top:4px;">${escapeHtml(baselineText)}</div>
+            </div>
+            <div style="border:1.5px solid #111;background:#FFF;padding:10px 14px;">
+              <div style="font-size:0.75rem;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">Primary Mark Leak</div>
+              <div style="font-size:0.92rem;font-weight:700;margin-top:4px;color:#C92A2A;">${escapeHtml(leakText)}</div>
+            </div>
+            <div style="border:1.5px solid #111;background:#FFF;padding:10px 14px;">
+              <div style="font-size:0.75rem;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">Active Paper Series</div>
+              <div style="font-size:0.92rem;font-weight:700;margin-top:4px;">${escapeHtml(seriesText)}</div>
+            </div>
+            <div style="border:1.5px solid #111;background:#FFF;padding:10px 14px;">
+              <div style="font-size:0.75rem;font-weight:700;color:var(--ink-soft);text-transform:uppercase;">Board Exam Target</div>
+              <div style="font-size:0.92rem;font-weight:700;margin-top:4px;">${escapeHtml(targetText)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Render Detected Weakness Clusters
+      const clustersContainer = document.getElementById('academic-weakness-clusters');
+      if (!clustersContainer) return;
+
+      const store = loadIntelligence();
+      const weaknesses = computeWeaknesses(store);
+
+      if (!weaknesses.length) {
+        clustersContainer.innerHTML = `
+          <div style="border:1.5px dashed #111;background:#FFF;padding:20px;text-align:center;">
+            <div style="font-size:1.1rem;font-weight:700;margin-bottom:6px;">Zero Recurring Weakness Clusters</div>
+            <p style="font-size:0.86rem;color:var(--ink-soft);margin:0 0 12px 0;">
+              Our Bayesian engine automatically flags a weakness cluster when you log 2+ slips with the same flaw tag in a chapter.
+            </p>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+              <button class="btn-primary" id="btn-goto-logger-diag" type="button" style="font-size:0.84rem;">Scan Paper with AI Autopsy &rarr;</button>
+              <button class="btn-secondary" id="btn-simulate-weakness" type="button" style="font-size:0.84rem;">Simulate Demo Weakness (Ch 4 Bracket Flaw)</button>
+            </div>
+          </div>
+        `;
+        const gotoLog = document.getElementById('btn-goto-logger-diag');
+        if (gotoLog) gotoLog.addEventListener('click', () => switchView('logger'));
+        const simWeakness = document.getElementById('btn-simulate-weakness');
+        if (simWeakness) {
+          simWeakness.addEventListener('click', () => {
+            logMistakeEntry({
+              subjectId: state.mathsTrack || 'maths-std-12',
+              chapterId: 4,
+              section: 'B',
+              marksLost: 2,
+              errorTag: 'SILLY',
+              paperLabel: 'Vraj Paper 1',
+              microAnchor: 'Bracket sign flip in -b formula'
+            });
+            logMistakeEntry({
+              subjectId: state.mathsTrack || 'maths-std-12',
+              chapterId: 4,
+              section: 'B',
+              marksLost: 2,
+              errorTag: 'SILLY',
+              paperLabel: 'Navneet Paper 1',
+              microAnchor: 'Sign error in b² - 4ac'
+            });
+            renderAcademicProfile();
+            showToast('Simulated 2 paper slips in Ch 4: Weakness detected!');
+            buddyReact('Weakness cluster detected in Ch 4! Take the targeted paper challenge.', 'alert');
+          });
+        }
+        return;
+      }
+
+      clustersContainer.innerHTML = '';
+      weaknesses.forEach((w) => {
+        const bp = BLUEPRINTS[w.pattern.subjectId] || BLUEPRINTS[state.activeSubject];
+        const ch = bp ? bp.chapters.find(c => c.id === w.chapterId) : null;
+        const chTitle = ch ? ch.title : `Chapter ${w.chapterId}`;
+        
+        // Find if there is an active or verified activity
+        const activity = store.activities.find(a => (a.linkedPatternIds || []).includes(w.pattern.patternId));
+        const status = activity ? activity.status : 'PENDING';
+        
+        // Find retest
+        const retest = activity ? store.retests.find(r => r.activityId === activity.activityId) : null;
+
+        const clusterCard = document.createElement('div');
+        clusterCard.className = 'card';
+        clusterCard.style.background = '#FFFFFF';
+        clusterCard.style.marginBottom = '12px';
+
+        let badgeHtml = '';
+        let actionBtnHtml = '';
+
+        if (status === 'VERIFIED') {
+          badgeHtml = `<span style="background:#2B8A3E;color:#FFF;padding:4px 10px;font-weight:700;font-size:0.78rem;border:1.5px solid #111;">✓ VERIFIED RESOLVED (+Evidence)</span>`;
+          actionBtnHtml = `<div style="font-size:0.82rem;color:#2B8A3E;font-weight:700;">Proven in next paper · Mastery +25% applied</div>`;
+        } else if (status === 'PRACTICE_DONE') {
+          badgeHtml = `<span style="background:var(--skin);color:var(--ink);padding:4px 10px;font-weight:700;font-size:0.78rem;border:1.5px solid #111;">PRACTICE DONE · AWAITING RETEST</span>`;
+          actionBtnHtml = `
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <span style="font-size:0.8rem;color:var(--ink-soft);">Next test paper:</span>
+              <button class="btn-primary retest-proof-pass-btn" data-retest-id="${retest ? retest.retestId : ''}" type="button" style="font-size:0.8rem;padding:6px 12px;">✓ 0 Marks Lost (Verify)</button>
+              <button class="btn-secondary retest-proof-fail-btn" data-retest-id="${retest ? retest.retestId : ''}" type="button" style="font-size:0.8rem;padding:6px 12px;color:#C92A2A;border-color:#C92A2A;">✗ Recurred (Reopen)</button>
+            </div>
+          `;
+        } else if (status === 'REOPENED') {
+          badgeHtml = `<span style="background:#C92A2A;color:#FFF;padding:4px 10px;font-weight:700;font-size:0.78rem;border:1.5px solid #111;">⚠️ REOPENED (Weakness Active)</span>`;
+          actionBtnHtml = `<button class="btn-primary take-challenge-btn" data-pattern-id="${w.pattern.patternId}" type="button" style="font-size:0.84rem;">Retry Targeted Paper Challenge &rarr;</button>`;
+        } else {
+          badgeHtml = `<span style="background:#FFF;color:#C92A2A;padding:4px 10px;font-weight:700;font-size:0.78rem;border:1.5px solid #C92A2A;">PENDING CHALLENGE</span>`;
+          actionBtnHtml = `<button class="btn-primary take-challenge-btn" data-pattern-id="${w.pattern.patternId}" type="button" style="font-size:0.84rem;">Take Targeted Paper Challenge &rarr;</button>`;
+        }
+
+        const masteryPct = Math.round(w.estimate * 100);
+
+        clusterCard.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+            <div>
+              <span style="font-size:0.75rem;font-weight:700;border:1px solid #111;padding:2px 6px;background:var(--beige);">${escapeHtml(w.pattern.errorTag)}</span>
+              <strong style="margin-left:8px;font-size:1.05rem;">Ch.${w.chapterId}: ${escapeHtml(chTitle)}</strong>
+              <div style="font-size:0.84rem;color:var(--ink-soft);margin-top:4px;">
+                Pattern: "${escapeHtml(w.pattern.description)}" · Logged ${w.pattern.frequency}x across test slips
+              </div>
+            </div>
+            <div>${badgeHtml}</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin:12px 0;background:var(--beige);padding:8px 12px;border:1px solid #111;">
+            <div>
+              <div style="font-size:0.72rem;color:var(--ink-soft);text-transform:uppercase;">Mastery Estimate</div>
+              <div style="font-weight:700;font-size:0.95rem;">${masteryPct}% (${w.severity})</div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem;color:var(--ink-soft);text-transform:uppercase;">Marks at Risk</div>
+              <div style="font-weight:700;font-size:0.95rem;color:#C92A2A;">${w.marksAtRisk} Marks</div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem;color:var(--ink-soft);text-transform:uppercase;">Evidence Entries</div>
+              <div style="font-weight:700;font-size:0.95rem;">${(getChapterMastery(store, w.pattern.subjectId, w.chapterId).evidence || []).length} items</div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div style="font-size:0.8rem;color:var(--ink-soft);">Hand back to paper: 1 question corrective action</div>
+            <div>${actionBtnHtml}</div>
+          </div>
+        `;
+
+        clustersContainer.appendChild(clusterCard);
+      });
+
+      // Bind challenge buttons
+      clustersContainer.querySelectorAll('.take-challenge-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const patId = btn.dataset.patternId;
+          const weakness = weaknesses.find(w => w.pattern.patternId === patId);
+          if (weakness) openChallengeModal(weakness);
+        });
+      });
+
+      // Bind retest proof buttons
+      clustersContainer.querySelectorAll('.retest-proof-pass-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rtId = btn.dataset.retestId;
+          if (rtId) {
+            recordRetestResult(rtId, 'PASS', 0);
+            state.xp += 25;
+            saveState();
+            renderAcademicProfile();
+            renderRetest();
+            showToast('✓ Retest Verified! +25 XP awarded.');
+            buddyReact('Boom! Verified on paper test. Chapter mastery boosted!', 'excited');
+          }
+        });
+      });
+
+      clustersContainer.querySelectorAll('.retest-proof-fail-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rtId = btn.dataset.retestId;
+          if (rtId) {
+            recordRetestResult(rtId, 'FAIL', 2);
+            renderAcademicProfile();
+            renderRetest();
+            showToast('Flaw recurred in paper. Weakness reopened.');
+            buddyReact('Weakness reopened. Let’s do another paper drill!', 'alert');
+          }
+        });
+      });
+    }
+
     /* ================= BUDDY MASCOT ENGINE ================= */
     const BUDDY_MOUTHS = {
       happy: 'M33 36 Q40 42 47 36',
@@ -2466,7 +2890,81 @@
       }
     }
 
+    function renderRetestVerifications() {
+      const verifBox = document.getElementById('retest-verifications-list');
+      const pendingBadge = document.getElementById('retest-pending-badge');
+      if (!verifBox) return;
+
+      const store = loadIntelligence();
+      const pendingRetests = (store.retests || []).filter(r => r.result === 'PENDING');
+      if (pendingBadge) pendingBadge.textContent = `${pendingRetests.length} Pending Proof${pendingRetests.length === 1 ? '' : 's'}`;
+
+      if (!pendingRetests.length) {
+        verifBox.innerHTML = `
+          <div style="border:1.5px dashed #111;background:var(--paper);padding:16px;text-align:center;font-size:0.88rem;color:var(--ink-soft);">
+            Zero pending paper retests right now. Complete a Targeted Paper Challenge in your Profile to schedule retest verifications.
+          </div>
+        `;
+        return;
+      }
+
+      verifBox.innerHTML = '';
+      pendingRetests.forEach(r => {
+        const bp = BLUEPRINTS[r.subjectId] || BLUEPRINTS[state.activeSubject];
+        const ch = bp ? bp.chapters.find(c => c.id === r.chapterId) : null;
+        const chTitle = ch ? ch.title : `Chapter ${r.chapterId}`;
+        const pattern = store.errorPatterns.find(p => (r.conceptIds || []).includes(p.conceptId) || p.chapterId === r.chapterId);
+        const flawTag = pattern ? pattern.errorTag : 'CONCEPT';
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.background = '#FFFFFF';
+        card.style.marginBottom = '10px';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+              <span style="font-size:0.75rem;font-weight:700;border:1px solid #111;padding:2px 6px;background:var(--skin);">${escapeHtml(flawTag)}</span>
+              <strong style="margin-left:8px;">Ch.${r.chapterId}: ${escapeHtml(chTitle)}</strong>
+              <div style="font-size:0.82rem;color:var(--ink-soft);margin-top:4px;">
+                Scheduled for next exam paper · Target Date: <strong>${escapeHtml(r.scheduledFor)}</strong>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn-primary retest-item-pass-btn" data-retest-id="${r.retestId}" type="button" style="font-size:0.8rem;padding:6px 12px;">✓ 0 Marks Lost (Verify)</button>
+              <button class="btn-secondary retest-item-fail-btn" data-retest-id="${r.retestId}" type="button" style="font-size:0.8rem;padding:6px 12px;color:#C92A2A;border-color:#C92A2A;">✗ Recurred (Reopen)</button>
+            </div>
+          </div>
+        `;
+        verifBox.appendChild(card);
+      });
+
+      verifBox.querySelectorAll('.retest-item-pass-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rtId = btn.dataset.retestId;
+          recordRetestResult(rtId, 'PASS', 0);
+          state.xp += 25;
+          saveState();
+          renderRetest();
+          renderAcademicProfile();
+          showToast('✓ Retest Verified! +25 XP awarded.');
+          buddyReact('Boom! Verified on paper test. Chapter mastery boosted!', 'excited');
+        });
+      });
+
+      verifBox.querySelectorAll('.retest-item-fail-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rtId = btn.dataset.retestId;
+          recordRetestResult(rtId, 'FAIL', 2);
+          renderRetest();
+          renderAcademicProfile();
+          showToast('Flaw recurred in paper. Weakness reopened.');
+          buddyReact('Weakness reopened. Keep practicing on paper!', 'alert');
+        });
+      });
+    }
+
     function renderRetest() {
+      renderRetestVerifications();
       const due = state.mistakes.filter((m) => (m.errorTag === 'CONCEPT' || m.errorTag === 'FORMULA') && (!m.dueAt || m.dueAt <= Date.now()));
       document.getElementById('retest-due-badge').textContent = `${due.length} Due Today`;
       const box = document.getElementById('retest-arena-box');
@@ -2791,8 +3289,7 @@
     if (aiAutoLogBtn) {
       aiAutoLogBtn.addEventListener('click', () => {
         if (!currentDiag) return;
-        const entry = {
-          id: 'm-' + Date.now(),
+        const entry = logMistakeEntry({
           subjectId: currentDiag.subjectId,
           chapterId: currentDiag.chapterId,
           section: currentDiag.sec,
@@ -2800,12 +3297,8 @@
           errorTag: currentDiag.tag,
           paperLabel: 'Gala Paper (AI Camera Scan)',
           microAnchor: currentDiag.title + ' flaw',
-          stability: 1.2,
-          dueAt: (currentDiag.tag === 'CONCEPT' || currentDiag.tag === 'FORMULA') ? Date.now() : null
-        };
-        state.mistakes.unshift(entry);
-        state.xp += 15;
-        saveState();
+          stability: 1.2
+        });
         renderLogger();
         renderTopChrome();
         showToast('+15 XP · AI Autopsy Logged without typing!');
@@ -2897,6 +3390,7 @@
       if (viewName === 'radar') renderRadar();
       if (viewName === 'retest') renderRetest();
       if (viewName === 'social') renderSocial();
+      if (viewName === 'profile') renderAcademicProfile();
       renderTopChrome();
     }
 
@@ -3003,6 +3497,7 @@
       renderTopChrome();
       renderSimulator();
       renderLogger();
+      renderAcademicProfile();
       showToast('Profile & Mathematics Stream saved');
       const trackName = state.mathsTrack === 'maths-basic-18' ? 'Maths Basic (18)' : 'Maths Standard (12)';
       buddyReact(`Saved! Active track updated to ${trackName}.`, 'happy');
@@ -3014,6 +3509,32 @@
       retakeDiagBtn.addEventListener('click', () => {
         startOnboardingModal();
       });
+    }
+
+    const retakeTopBtn = document.getElementById('profile-retake-diag-top');
+    if (retakeTopBtn) {
+      retakeTopBtn.addEventListener('click', () => {
+        startOnboardingModal();
+      });
+    }
+
+    const challengeDoneBtn = document.getElementById('challenge-mark-done-btn');
+    if (challengeDoneBtn) {
+      challengeDoneBtn.addEventListener('click', () => {
+        if (!activeChallengeActivity) return;
+        recordCorrectivePractice(activeChallengeActivity.activityId);
+        issueRetest(activeChallengeActivity);
+        closeChallengeModal();
+        renderAcademicProfile();
+        renderRetest();
+        showToast('Paper practice logged! Retest proof scheduled for next exam paper.');
+        buddyReact('Practice logged! Hand back to paper: prove it on your next real paper test.', 'excited');
+      });
+    }
+
+    const challengeCloseBtn = document.getElementById('challenge-close-btn');
+    if (challengeCloseBtn) {
+      challengeCloseBtn.addEventListener('click', closeChallengeModal);
     }
 
     document.getElementById('replay-intro-btn').addEventListener('click', () => {
@@ -3354,6 +3875,7 @@
       if (onboardAnswers.target === 'merit') state.strategyMode = 'TOPPER';
       if (onboardAnswers.target === 'pass') state.strategyMode = 'SURVIVAL';
 
+      state.diagnosticProfile = { ...onboardAnswers };
       state.isLoggedIn = true;
       state.hasCompletedOnboarding = true;
       saveState();
@@ -3362,6 +3884,7 @@
       renderTopChrome();
       renderSimulator();
       renderLogger();
+      renderAcademicProfile();
 
       const greetingEl = document.getElementById('mission-student-greeting');
       if (greetingEl) greetingEl.textContent = `Good evening, ${state.studentName}`;
@@ -3428,11 +3951,18 @@
       const found = list.find(p => p.studentName.toLowerCase() === profileName.toLowerCase());
       if (found) {
         state = { ...structuredClone(DEFAULT_STATE), ...found, isLoggedIn: true, hasCompletedOnboarding: true };
+        if (found.intelligence) {
+          saveIntelligence(found.intelligence);
+        } else {
+          saveIntelligence(createEmptyIntelligence());
+        }
         saveState();
         closeAuthModal();
         renderTopChrome();
         renderSimulator();
         renderLogger();
+        renderAcademicProfile();
+        renderRetest();
         showToast(`Switched to ${state.studentName}'s Desk`);
         buddyReact(`Welcome back to your desk, ${state.studentName}!`, 'excited');
         speakBuddy(`Welcome back to your desk, ${state.studentName}!`);
@@ -3458,6 +3988,7 @@
       for (const k in onboardAnswers) delete onboardAnswers[k];
       onboardAnswers.name = name;
       onboardAnswers.maths_track = track;
+      saveIntelligence(createEmptyIntelligence());
 
       saveState();
       closeAuthModal();
@@ -3479,11 +4010,14 @@
           state.streak = 0;
           state.mistakes = [];
           state.simStates = {};
+          saveIntelligence(createEmptyIntelligence());
           saveState();
           registerOrUpdateProfile(state);
           renderTopChrome();
           renderSimulator();
           renderLogger();
+          renderAcademicProfile();
+          renderRetest();
           showToast('Desk wiped clean (0 XP slate)');
           buddyReact('Fresh clean slate! 0 XP, 0 slips logged. Ready for real paper tests.', 'happy');
         }
@@ -3513,6 +4047,9 @@
     window.switchView = switchView;
     window.triggerDynamicAutopsyScan = triggerDynamicAutopsyScan;
     window.startOnboardingModal = startOnboardingModal;
+    window.renderAcademicProfile = renderAcademicProfile;
+    window.openChallengeModal = openChallengeModal;
+    window.closeChallengeModal = closeChallengeModal;
   </script>
 </body>
 </html>

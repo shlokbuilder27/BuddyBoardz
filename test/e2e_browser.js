@@ -350,9 +350,150 @@ async function runE2ESuite() {
     assert(aaravRestored.xp === 15, 'Aarav\'s XP preserved (15 XP)');
 
     // ----------------------------------------------------
+    // WORKFLOW 6: Closed Feedback Loop (Pillar 01 -> Corrective Practice -> Pillar 05 Retest Evidence)
+    // ----------------------------------------------------
+    console.log('\n📋 Scenario 6: Closed Feedback Loop & Demonstrated Retest Evidence');
+
+    // 1. Switch to Profile view to check Academic Diagnostic Profile
+    await page.evaluate(() => window.switchView('profile'));
+    await sleep(250);
+
+    const profileInitial = await page.evaluate(() => {
+      const card = document.getElementById('academic-diagnostic-profile-card');
+      const diagSummary = document.getElementById('academic-diag-summary');
+      return {
+        cardVisible: card !== null,
+        hasDiagSummary: diagSummary && diagSummary.children.length > 0
+      };
+    });
+
+    assert(profileInitial.cardVisible, 'Academic Diagnostic Profile card rendered in Profile view');
+    assert(profileInitial.hasDiagSummary, '7-Question Diagnostic Calibration summary visible');
+
+    // 2. Log a second paper mistake in Chapter 7 with CONCEPT flaw to trigger recurring weakness detection
+    await page.evaluate(() => {
+      window.logMistakeEntry({
+        subjectId: 'maths-std-12',
+        chapterId: 7,
+        section: 'C',
+        marksLost: 3,
+        errorTag: 'CONCEPT',
+        paperLabel: 'Navneet Paper 1',
+        microAnchor: 'Section formula m1x2 ratio inversion'
+      });
+      window.renderAcademicProfile();
+    });
+    await sleep(200);
+
+    const weaknessState = await page.evaluate(() => {
+      const rawIntel = localStorage.getItem('buddyboardz_intelligence_v2');
+      const clusters = document.querySelectorAll('#academic-weakness-clusters .card');
+      const firstClusterText = clusters.length > 0 ? clusters[0].textContent : '';
+      const hasChallengeBtn = document.querySelector('.take-challenge-btn') !== null;
+      return {
+        rawIntel,
+        clustersCount: clusters.length,
+        hasCh7: firstClusterText.includes('Ch.7') || firstClusterText.includes('Coordinate'),
+        hasConceptTag: firstClusterText.includes('CONCEPT'),
+        hasPendingBadge: firstClusterText.includes('PENDING CHALLENGE'),
+        hasChallengeBtn
+      };
+    });
+
+    console.log('    [Scenario 6 Weakness State]:', weaknessState);
+
+    assert(weaknessState.clustersCount >= 1, 'Bayesian engine automatically detects recurring weakness cluster');
+    assert(weaknessState.hasCh7, 'Weakness correctly mapped to Chapter 7');
+    assert(weaknessState.hasConceptTag, 'Weakness retains CONCEPT flaw tag');
+    assert(weaknessState.hasPendingBadge, 'Initial status marked PENDING CHALLENGE');
+    assert(weaknessState.hasChallengeBtn, 'Presents "Take Targeted Paper Challenge" action');
+
+    // 3. Open Targeted Paper Challenge
+    await page.evaluate(() => {
+      const btn = document.querySelector('.take-challenge-btn');
+      if (btn) btn.click();
+    });
+    await sleep(200);
+
+    const challengeModalState = await page.evaluate(() => {
+      const modal = document.getElementById('challenge-modal');
+      const qText = document.getElementById('challenge-question-text').textContent;
+      const hText = document.getElementById('challenge-hint-text').textContent;
+      return {
+        isActive: modal && modal.classList.contains('active'),
+        hasQuestion: qText.length > 10,
+        hasHint: hText.includes('Invariant')
+      };
+    });
+
+    assert(challengeModalState.isActive, 'Targeted Paper Challenge modal opened');
+    assert(challengeModalState.hasQuestion, 'Presents concrete paper problem prompt');
+    assert(challengeModalState.hasHint, 'Provides explicit invariant landmine check');
+
+    // 4. Student marks paper practice done
+    await page.click('#challenge-mark-done-btn');
+    await sleep(250);
+
+    const postPracticeState = await page.evaluate(() => {
+      const clusters = document.querySelectorAll('#academic-weakness-clusters .card');
+      const firstText = clusters.length > 0 ? clusters[0].textContent : '';
+      return {
+        hasPracticeDoneBadge: firstText.includes('PRACTICE DONE')
+      };
+    });
+
+    assert(postPracticeState.hasPracticeDoneBadge, 'Status updated to PRACTICE DONE · AWAITING RETEST');
+
+    // 5. Navigate to Retest Arena to inspect Demonstrated Retest Queue
+    await page.evaluate(() => window.switchView('retest'));
+    await sleep(250);
+
+    const retestQueueState = await page.evaluate(() => {
+      const items = document.querySelectorAll('#retest-verifications-list .card');
+      const firstItemText = items.length > 0 ? items[0].textContent : '';
+      return {
+        itemCount: items.length,
+        hasCh7Proof: firstItemText.includes('Ch.7') && firstItemText.includes('CONCEPT'),
+        hasVerifyBtn: document.querySelector('.retest-item-pass-btn') !== null
+      };
+    });
+
+    assert(retestQueueState.itemCount >= 1, 'Demonstrated Retest Queue displays scheduled verification');
+    assert(retestQueueState.hasCh7Proof, 'Retest proof linked to Ch.7 CONCEPT flaw');
+
+    // 6. Record retest verification: Student wrote next paper and demonstrated 0 marks lost!
+    await page.click('.retest-item-pass-btn');
+    await sleep(300);
+
+    // 7. Verify resolution badge in Profile view
+    await page.evaluate(() => window.switchView('profile'));
+    await sleep(250);
+
+    const verifiedResult = await page.evaluate(() => {
+      const clusterHtml = document.getElementById('academic-weakness-clusters').innerHTML;
+      const rawIntel = localStorage.getItem('buddyboardz_intelligence_v2');
+      const intel = JSON.parse(rawIntel || '{}');
+      const ch7Mastery = (intel.chapterMastery || []).find(m => m.chapterId === 7);
+      const activity = (intel.activities || [])[0];
+
+      return {
+        hasVerifiedBadge: clusterHtml.includes('VERIFIED RESOLVED (+Evidence)'),
+        activityStatus: activity ? activity.status : '',
+        retestEvidenceRecorded: ch7Mastery && ch7Mastery.evidence.some(e => e.kind === 'RETRY_PASS'),
+        masteryBoosted: ch7Mastery ? ch7Mastery.estimate > 0.3 : false,
+        xpTotal: window.state.xp
+      };
+    });
+
+    assert(verifiedResult.hasVerifiedBadge, 'Displays official "✓ VERIFIED RESOLVED (+Evidence)" badge');
+    assert(verifiedResult.activityStatus === 'VERIFIED', 'Activity marked VERIFIED in Intelligence Store');
+    assert(verifiedResult.retestEvidenceRecorded, 'Mastery backed by RETRY_PASS empirical evidence');
+    assert(verifiedResult.masteryBoosted, 'Chapter 7 mastery estimate boosted (+25% gain)');
+
+    // ----------------------------------------------------
     // NETWORK LEAK VERIFICATION
     // ----------------------------------------------------
-    console.log('\n📋 Scenario 6: Network Request Audit (Zero-Leak / Offline Verification)');
+    console.log('\n📋 Scenario 7: Network Request Audit (Zero-Leak / Offline Verification)');
     console.log(`  Total Requests Executed: ${networkRequests.length}`);
     console.log(`  External Requests: ${externalRequests.length}`);
 

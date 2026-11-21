@@ -138,6 +138,39 @@ pub fn save_atomic_backup(path: String, json_payload: String) -> Result<(), Stri
    node test/run_tests.js
    ```
 2. **Mirroring Rule:**
-   Any change made to `buddyboardz-10/index.html` that affects the desktop interface must also be reflected in `buddyboardz-10/buddyboardz-10-tauri-rust/dist_index_preview.html`.
+   Any change made to `buddyboardz-10/index.html` that affects the desktop interface must also be reflected in `buddyboardz-10/buddyboardz-10-tauri-rust/dist_index_preview.html` and `dist/index.html`.
 3. **Commit Standards:**
    Follow Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`). Never commit unverified or breaking code.
+
+---
+
+## 7. The Multi-Harness AI Engineering Charter ("Dentist vs. Plumber Principle")
+
+BuddyBoardz is engineered through a coordinated multi-harness operating structure. Rather than uncoordinated agents colliding on the same codebase, every model and harness has strict role boundaries:
+
+| Seat | Agent / Engine | Responsibility | Primary Deliverables |
+|---|---|---|---|
+| **Founder & Decider** | **Shlok** | Field testing, product vision, final approval | Student feedback, Surat board exam alignment, merge signoff |
+| **Chief Strategist** | **ChatGPT (GPT-6)** | Product architecture, pedagogical conscience, specifications | Roadmaps, invariant specifications, flaw taxonomy design |
+| **Master Architect & Conductor** | **Antigravity / `WOZ` (Gemini 3.8 Flash)** | System conductor, context engineering, harness runner | `AGENTS.md`, test orchestrator, memory OS, coordinate harnesses |
+| **Heavy Implementation Lead** | **Claude Code (`CC`)** | Core domain logic, native Rust engines, precision refactoring | Tauri IPC, FSRS math, AST parsers, deterministic state engines |
+| **Frontend Workhorse** | **OpenCode (`oc` / `ocw`)** | High-velocity UI implementation (unlimited quota) | Bauhaus/Rams HTML/CSS, responsive components, landing pages |
+| **Independent Verifier** | **OpenAI Codex** | Verification, AST review, security and contract auditing | Static analysis, test coverage audit, independent verification |
+
+---
+
+## 8. The Four Engineering Laws
+
+All agents, subagents, and contributors modifying this repository must obey these four laws without exception:
+
+1. **Law 1: One Primary Writer Per Task**  
+   Never permit multiple AI harnesses to edit the same file simultaneously. Each task is owned by one designated writer; all other participants operate in advisory or review roles.
+
+2. **Law 2: Independent Verification**  
+   The implementer cannot be the sole verifier. Code produced by an implementation agent must be evaluated by an independent test suite, contract linter, or verification harness.
+
+3. **Law 3: Evidence Before Approval**  
+   Zero unverified claims. No feature, bugfix, or refactor may be marked resolved without deterministic execution logs demonstrating passing assertions that actively exercise the code.
+
+4. **Law 4: Git is the Single Source of Truth**  
+   Every meaningful milestone must be captured in atomic Git commits adhering to Conventional Commits. Working trees must remain clean, and every state mutation must have an auditable, rollback-safe history.
